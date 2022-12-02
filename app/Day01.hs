@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Day01
--- Description :  Day 1 challenge, calories
+-- Description :  Calories
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
@@ -10,9 +10,27 @@
 --
 -- Creation date: Fri Dec  2 11:19:05 2022.
 module Main
-  ( main
+  ( main,
   )
 where
 
+import Control.Applicative
+import Data.Attoparsec.Text.Lazy hiding (take)
+import Data.List
+import qualified Data.Text.Lazy.IO as TL
+
+parseCalories :: Parser Int
+parseCalories = sum <$> some (decimal <* endOfLine)
+
+parseInput :: Parser [Int]
+parseInput = parseCalories `sepBy1'` endOfLine <* endOfInput
+
 main :: IO ()
-main = undefined
+main = do
+  b <- TL.readFile "inputs/input01.txt"
+  -- Part 1.
+  let cs = either error id $ parseOnly parseInput b
+  print $ maximum cs
+  -- Part 2.
+  let csSorted = reverse $ sort cs
+  print $ sum $ take 3 csSorted
