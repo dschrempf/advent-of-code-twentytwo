@@ -9,7 +9,106 @@
 -- Portability :  portable
 --
 -- Creation date: Fri Dec  2 11:46:04 2022.
-module Day02
-  (
+module Main
+  ( main,
   )
 where
+
+import Control.Applicative
+import Data.Attoparsec.Text.Lazy
+import qualified Data.Text.Lazy.IO as TL
+
+-- Part 1.
+
+data Move = Rock | Paper | Scissors
+  deriving (Show, Eq)
+
+data Game = Game Move Move
+  deriving (Show, Eq)
+
+class Scorable a where
+  score :: a -> Int
+
+instance Scorable Move where
+  score Rock = 1
+  score Paper = 2
+  score Scissors = 3
+
+instance Scorable Game where
+  score (Game e p) = score p + score' e p
+    where
+      score' Rock Scissors = 0
+      score' Scissors Rock = 6
+      score' Paper Scissors = 6
+      score' Scissors Paper = 0
+      score' Paper Rock = 0
+      score' Rock Paper = 6
+      score' x y
+        | x == y = 3
+        | otherwise = error "score': bottom (?)"
+
+pMoveWith :: Char -> Char -> Char -> Parser Move
+pMoveWith r p s = prs Rock r <|> prs Paper p <|> prs Scissors s
+  where
+    prs g c = g <$ char c
+
+pEnemy :: Parser Move
+pEnemy = pMoveWith 'A' 'B' 'C'
+
+pPlayer :: Parser Move
+pPlayer = pMoveWith 'X' 'Y' 'Z'
+
+pGame :: Parser Game
+pGame = do
+  e <- pEnemy
+  _ <- char ' '
+  p <- pPlayer
+  pure $ Game e p
+
+pInput1 :: Parser [Game]
+pInput1 = pGame `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+
+-- Part 2.
+
+data Desire = Lose | Draw | Win
+  deriving (Show, Eq)
+
+data DGame = DGame Move Desire
+  deriving (Show, Eq)
+
+pDesire :: Parser Desire
+pDesire = prs Lose 'X' <|> prs Draw 'Y' <|> prs Win 'Z'
+  where
+    prs g c = g <$ char c
+
+pDGame :: Parser DGame
+pDGame = do
+  e <- pEnemy
+  _ <- char ' '
+  d <- pDesire
+  pure $ DGame e d
+
+pInput2 :: Parser [DGame]
+pInput2 = pDGame `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+
+determineGame :: DGame -> Game
+determineGame (DGame Rock Lose) = Game Rock Scissors
+determineGame (DGame Rock Win) = Game Rock Paper
+determineGame (DGame Paper Lose) = Game Paper Rock
+determineGame (DGame Paper Win) = Game Paper Scissors
+determineGame (DGame Scissors Lose) = Game Scissors Paper
+determineGame (DGame Scissors Win) = Game Scissors Rock
+determineGame (DGame x Draw) = Game x x
+
+main :: IO ()
+main = do
+  b <- TL.readFile "inputs/input02.txt"
+  -- Part 1.
+  let gs = either error id $ parseOnly pInput1 b
+      ss = map score gs
+  print $ sum ss
+  -- Part 2.
+  let ds = either error id $ parseOnly pInput2 b
+      gs' = map determineGame ds
+      ss' = map score gs'
+  print $ sum ss'
