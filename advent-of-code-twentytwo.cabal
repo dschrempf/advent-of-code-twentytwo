@@ -6,8 +6,12 @@ description:
   Please see the README at <https://github.com/dschrempf/advent-of-code-twentytwo#readme>
 
 category:           Math, Statistics
-homepage:           https://github.com/dschrempf/advent-of-code-twentytwo#readme
-bug-reports:        https://github.com/dschrempf/advent-of-code-twentytwo/issues
+homepage:
+  https://github.com/dschrempf/advent-of-code-twentytwo#readme
+
+bug-reports:
+  https://github.com/dschrempf/advent-of-code-twentytwo/issues
+
 author:             Dominik Schrempf
 maintainer:         dominik.schrempf@gmail.com
 copyright:          2022 Dominik Schrempf
@@ -43,5 +47,16 @@ common bench
 common exec
   default-language: Haskell2010
   ghc-options:
-    -Wall -Wunused-packages -Wredundant-constraints
-    -threaded -rtsopts -with-rtsopts=-N
+    -Wall -Wunused-packages -Wredundant-constraints -threaded -rtsopts
+    -with-rtsopts=-N
+
+executable day01
+  import:          common, exec
+  main-is:         Day01.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , base        >=4.7 && <5
+    , bytestring
