@@ -45,9 +45,23 @@ priority c
   | isUpper c = fromEnum c - fromEnum 'A' + 27
   | otherwise = error "priority: not an alpha character"
 
+findShared :: T.Text -> T.Text -> T.Text -> Char
+findShared a b = fromJust . T.find (\x -> x `S.member` sa && x `S.member` sb)
+  where
+    sa = assembleSet a
+    sb = assembleSet b
+
+findAllShared :: [T.Text] -> String
+findAllShared [] = ""
+findAllShared (x : y : z : zs) = findShared x y z : findAllShared zs
+findAllShared _ = error "findAllShared: not multiple of three"
+
 main :: IO ()
 main = do
   t <- T.readFile "inputs/input03.txt"
+  -- Part 1.
   let xs = either error id $ parseOnly pInput t
       ds = map findDuplicate xs
   print $ sum $ map priority ds
+  -- Part 2.
+  print $ sum $ map priority $ findAllShared xs
