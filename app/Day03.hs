@@ -16,6 +16,7 @@ where
 
 import Control.Applicative
 import Data.Attoparsec.Text
+import Data.Char (isLower, isUpper)
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -38,10 +39,15 @@ pRucksack = takeWhile1 (not . isEndOfLine)
 pInput :: Parser [T.Text]
 pInput = pRucksack `sepBy1` endOfLine <* optional endOfLine <* endOfInput
 
+priority :: Char -> Int
+priority c
+  | isLower c = fromEnum c - fromEnum 'a' + 1
+  | isUpper c = fromEnum c - fromEnum 'A' + 27
+  | otherwise = error "priority: not an alpha character"
+
 main :: IO ()
 main = do
   t <- T.readFile "inputs/input03.txt"
   let xs = either error id $ parseOnly pInput t
       ds = map findDuplicate xs
-  print xs
-  print ds
+  print $ sum $ map priority ds
