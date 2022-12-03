@@ -76,20 +76,13 @@ data Desire = Lose | Draw | Win
 data DGame = DGame Move Desire
   deriving (Show, Eq)
 
-pDesire :: Parser Desire
-pDesire = prs Lose 'X' <|> prs Draw 'Y' <|> prs Win 'Z'
-  where
-    prs g c = g <$ char c
+moveToDesire :: Move -> Desire
+moveToDesire Rock = Lose
+moveToDesire Paper = Draw
+moveToDesire Scissors = Win
 
-pDGame :: Parser DGame
-pDGame = do
-  e <- pEnemy
-  _ <- char ' '
-  d <- pDesire
-  pure $ DGame e d
-
-pInput2 :: Parser [DGame]
-pInput2 = pDGame `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+gameToDGame :: Game -> DGame
+gameToDGame (Game e p) = DGame e $ moveToDesire p
 
 determineGame :: DGame -> Game
 determineGame (DGame Rock Lose) = Game Rock Scissors
@@ -108,7 +101,6 @@ main = do
       ss = map score gs
   print $ sum ss
   -- Part 2.
-  let ds = either error id $ parseOnly pInput2 b
-      gs' = map determineGame ds
+  let gs' = map (determineGame . gameToDGame) gs
       ss' = map score gs'
   print $ sum ss'
