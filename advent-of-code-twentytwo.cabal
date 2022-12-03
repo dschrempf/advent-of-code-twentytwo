@@ -73,3 +73,16 @@ executable day02
     , attoparsec
     , base        >=4.7 && <5
     , text
+
+executable day03
+  import:          common, exec
+  main-is:         Day03.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , attoparsec
+    , base        >=4.7 && <5
+    , containers
+    , text
