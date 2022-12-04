@@ -1,6 +1,6 @@
 -- |
--- Module      :  Day02
--- Description :  Rock, paper, scissors
+-- Module      :  Main
+-- Description :  Day 2; Rock, paper, scissors
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

@@ -1,6 +1,6 @@
 -- |
--- Module      :  Day04
--- Description :  Assignments
+-- Module      :  Main
+-- Description :  Day 4; Assignments
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

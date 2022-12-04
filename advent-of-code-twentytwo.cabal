@@ -98,3 +98,14 @@ executable day04
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
+
+executable day05
+  import:          common, exec
+  main-is:         Day05.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , attoparsec
+    , base        >=4.7 && <5

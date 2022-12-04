@@ -1,6 +1,6 @@
 -- |
--- Module      :  Day03
--- Description :  Rucksacks
+-- Module      :  Main
+-- Description :  Day 3; Rucksacks
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
