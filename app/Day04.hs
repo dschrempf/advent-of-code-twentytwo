@@ -14,5 +14,20 @@ module Day04
   )
 where
 
+import Data.Attoparsec.ByteString.Char8
+import Numeric.Natural
+
+data Assignment = Assignment Natural Natural
+
+pAssignment :: Parser Assignment
+pAssignment = do
+  x <- decimal
+  _ <- char '-'
+  y <- decimal
+  pure $ Assignment x y
+
+pPair :: Parser (Assignment, Assignment)
+pPair = undefined
+
 main :: IO ()
 main = undefined
