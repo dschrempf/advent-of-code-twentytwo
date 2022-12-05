@@ -19,7 +19,7 @@ module Main
 where
 
 import Control.Applicative
-import Data.Attoparsec.ByteString.Char8
+import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
 import Data.Functor
 import Data.List
@@ -75,8 +75,54 @@ pInput = Input <$> pCrates <*> pMoves <* endOfInput
 createSetupToStacks :: [[Maybe Crate]] -> [Stack]
 createSetupToStacks xs = map catMaybes $ transpose xs
 
-move :: Move -> [Stack] -> [Stack]
-move = undefined
+-- Part 1.
+
+pop :: Int -> [Stack] -> (Char, [Stack])
+pop i xs = (head x, take j xs ++ [tail x] ++ drop (j + 1) xs)
+  where
+    j = i - 1
+    x = xs !! j
+
+push :: Int -> Char -> [Stack] -> [Stack]
+push i c xs = take j xs ++ [c : x] ++ drop (j + 1) xs
+  where
+    j = i - 1
+    x = xs !! j
+
+move :: Int -> Int -> [Stack] -> [Stack]
+move f t xs = let (c, xs') = pop f xs in push t c xs'
+
+nTimes :: Int -> (a -> a) -> a -> a
+nTimes 1 f x = f x
+nTimes n f x
+  | n < 1 = error "nTimes: negative n"
+  | otherwise = nTimes (n - 1) f $ f x
+
+moveN :: [Stack] -> Move -> [Stack]
+moveN xs (Move n f t) = nTimes n (move f t) xs
+
+moveAll :: [Stack] -> [Move] -> [Stack]
+moveAll = foldl' moveN
+
+-- Part 2.
+
+pop' :: Int -> Int -> [Stack] -> (String, [Stack])
+pop' n i xs = (take n x, take j xs ++ [drop n x] ++ drop (j + 1) xs)
+  where
+    j = i - 1
+    x = xs !! j
+
+push' :: Int -> String -> [Stack] -> [Stack]
+push' i s xs = take j xs ++ [s ++ x] ++ drop (j + 1) xs
+  where
+    j = i - 1
+    x = xs !! j
+
+moveN' :: [Stack] -> Move -> [Stack]
+moveN' xs (Move n f t) = let (s, xs') = pop' n f xs in push' t s xs'
+
+moveAll' :: [Stack] -> [Move] -> [Stack]
+moveAll' = foldl' moveN'
 
 main :: IO ()
 main = do
@@ -84,3 +130,9 @@ main = do
   let (Input stp mvs) = either error id $ parseOnly pInput b
       stacks = createSetupToStacks stp
   print stacks
+  -- Part 1,
+  let r1 = moveAll stacks mvs
+  print $ map head r1
+  -- Part 2.
+  let r2 = moveAll' stacks mvs
+  print $ map head r2
