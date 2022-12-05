@@ -9,6 +9,8 @@
 -- Portability :  portable
 --
 -- Creation date: Sat Dec  3 07:36:42 2022.
+--
+-- See https://adventofcode.com/2022/day/3.
 module Main
   ( main,
   )
