@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Main
--- Description :  Day 4; Assignments
+-- Description :  Day 4; Camp Cleanup
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

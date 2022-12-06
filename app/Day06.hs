@@ -21,7 +21,7 @@ import Data.List
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TL
 
--- Part 1.
+-- Part 1 and 2.
 
 containsDouble :: Int64 -> TL.Text -> Bool
 containsDouble n = (== n) . genericLength . nub . TL.unpack

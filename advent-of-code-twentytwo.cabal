@@ -121,3 +121,15 @@ executable day06
   build-depends:
     , base  >=4.7 && <5
     , text
+
+executable day07
+  import:          common, exec
+  main-is:         Day07.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , attoparsec
+    , base        >=4.7 && <5
+    , text

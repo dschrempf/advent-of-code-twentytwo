@@ -2,7 +2,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Day 5; Crates
+-- Description :  Day 5; Supply Stacks
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

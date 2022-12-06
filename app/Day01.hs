@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Main
--- Description :  Day 1; Calories
+-- Description :  Day 1; Calorie Counting
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
