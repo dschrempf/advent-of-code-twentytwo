@@ -119,6 +119,5 @@ executable day06
   autogen-modules:
   ghc-options:
   build-depends:
-    , attoparsec
-    , base        >=4.7 && <5
-    , bytestring
+    , base  >=4.7 && <5
+    , text
