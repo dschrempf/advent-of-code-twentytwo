@@ -17,22 +17,66 @@ module Main
 where
 
 import Data.List
+import qualified Data.Matrix.Unboxed as MU
+import qualified Data.Vector.Unboxed as VU
 
-type Field = [[Int]]
+type Field = MU.Matrix Int
 
 pField :: String -> Field
-pField = map (map (read . singleton)) . lines
+pField = MU.fromLists . map (map (read . singleton)) . lines
 
--- This was a nice idea, but it does not work because trees may be counted more times.
-nVisible :: [Int] -> Int
-nVisible = fst . foldl' f (0, 0)
+-- Part 1.
+
+isVisible :: Field -> (Int, Int) -> Int -> Bool
+isVisible f (i, j) s =
+  any
+    v
+    [ VU.take j theRow,
+      VU.drop (j + 1) theRow,
+      VU.take i theCol,
+      VU.drop (i + 1) theCol
+    ]
   where
-    f (n, maxSize) thisSize = if maxSize >= thisSize then (n, maxSize) else (n + 1, thisSize)
+    v = isVisibleOneDirection s
+    theRow = MU.takeRow f i
+    theCol = MU.takeColumn f j
+
+isVisibleOneDirection :: Int -> VU.Vector Int -> Bool
+isVisibleOneDirection s v
+  | VU.null v = True
+  | VU.any (>= s) v = False
+  | otherwise = True
+
+-- Part 2.
+
+scenicScore :: Field -> (Int, Int) -> Int -> Int
+scenicScore f (i, j) s =
+  product $
+    map
+      v
+      [ VU.reverse $ VU.take j theRow,
+        VU.drop (j + 1) theRow,
+        VU.reverse $ VU.take i theCol,
+        VU.drop (i + 1) theCol
+      ]
+  where
+    v = nVisible s
+    theRow = MU.takeRow f i
+    theCol = MU.takeColumn f j
+
+nVisible :: Int -> VU.Vector Int -> Int
+nVisible s xs = if VU.null rest then n else n + 1
+  where
+    (smaller, rest) = VU.break (>= s) xs
+    n = VU.length smaller
 
 main :: IO ()
 main = do
   d <- readFile "inputs/input08.txt"
-  let fRows = pField d
-      fCols = transpose fRows
-      n = sum $ map (sum . map nVisible) [fRows, map reverse fRows, fCols, map reverse fCols]
-  print n
+  let f = pField d
+      v = MU.imap (isVisible f) f
+  -- Part 1.
+  print $ MU.foldl (+) 0 $ MU.map (\b -> if b then 1 else 0 :: Int) v
+  -- Part 2.
+  let n = MU.imap (scenicScore f) f
+  print $ MU.foldl max 0 n

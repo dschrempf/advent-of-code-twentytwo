@@ -145,3 +145,4 @@ executable day08
   build-depends:
     , base      >=4.7 && <5
     , matrices
+    , vector

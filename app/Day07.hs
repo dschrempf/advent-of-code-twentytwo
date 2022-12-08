@@ -130,12 +130,16 @@ hInput :: [Line] -> DirTree
 hInput ((LCmd (Cd CdRoot)) : xs) = fst $ hDirTree (emptyDirTree "/") xs
 hInput _ = error "hInput: no cd /"
 
+-- Part 1.
+
 calculateDirSizes :: DirTree -> Tree Natural
 calculateDirSizes (Node (DirLabel _ fs) ds) = Node (f + d) ds'
   where
     ds' = map calculateDirSizes ds
     f = sum $ map fSize fs
     d = sum $ map rootLabel ds'
+
+-- Part 2.
 
 totSpace :: Natural
 totSpace = 70000000
