@@ -38,6 +38,9 @@ data DirTree = DirNode
   }
   deriving (Show)
 
+emptyDirTree :: TS.Text -> DirTree
+emptyDirTree n = DirNode n [] []
+
 data CdCmd = CdRoot | CdUp | CdDir TS.Text
   deriving (Show, Eq)
 
@@ -99,7 +102,14 @@ addDir (x : xs) d =
       DirNode n (fs1 `union` fs2) $ foldl' addDir ds1 ds2
 
 hDirTree :: DirTree -> [Line] -> (DirTree, [Line])
+hDirTree d [] = (d, [])
 hDirTree d@(DirNode n fs ds) (x : xs) = case x of
+  (LDir (Dir n')) ->
+    let d' = DirNode n fs (addDir ds $ emptyDirTree n')
+     in hDirTree d' xs
+  (LFile f) ->
+    let d' = DirNode n (fs `union` [f]) ds
+     in hDirTree d' xs
   (LCmd c) -> case c of
     -- Ignore 'ls' commands.
     Ls -> hDirTree d xs
@@ -107,12 +117,12 @@ hDirTree d@(DirNode n fs ds) (x : xs) = case x of
     (Cd CdRoot) -> error "hDirTree: jump to root"
     (Cd CdUp) -> (d, xs)
     (Cd (CdDir n')) ->
-      let (d', xs') = hDirTree (DirNode n' [] []) xs
+      let (d', xs') = hDirTree (emptyDirTree n') xs
           ds' = addDir ds d'
-       in (DirNode n fs ds', xs')
+       in hDirTree (DirNode n fs ds') xs'
 
 hInput :: [Line] -> DirTree
-hInput ((LCmd (Cd CdRoot)) : xs) = fst $ hDirTree (DirNode "/" [] []) xs
+hInput ((LCmd (Cd CdRoot)) : xs) = fst $ hDirTree (emptyDirTree "/") xs
 hInput _ = error "hInput: no cd /"
 
 main :: IO ()
