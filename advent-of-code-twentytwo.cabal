@@ -132,4 +132,5 @@ executable day07
   build-depends:
     , attoparsec
     , base        >=4.7 && <5
+    , containers
     , text

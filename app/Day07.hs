@@ -21,25 +21,30 @@ where
 import Control.Applicative
 import Data.Attoparsec.Text.Lazy
 import Data.Char
+import Data.Foldable
 import Data.List
+import Data.Monoid
 import qualified Data.Text as TS
 import qualified Data.Text.Lazy.IO as TL
+import Data.Tree
+import Numeric.Natural
 
 data File = File
   { fName :: TS.Text,
-    fSize :: Integer
+    fSize :: Natural
   }
   deriving (Show, Eq)
 
-data DirTree = DirNode
+data DirLabel = DirLabel
   { label :: TS.Text,
-    files :: [File],
-    subdirectories :: [DirTree]
+    files :: [File]
   }
-  deriving (Show)
+  deriving (Show, Eq)
+
+type DirTree = Tree DirLabel
 
 emptyDirTree :: TS.Text -> DirTree
-emptyDirTree n = DirNode n [] []
+emptyDirTree n = Node (DirLabel n []) []
 
 data CdCmd = CdRoot | CdUp | CdDir TS.Text
   deriving (Show, Eq)
@@ -94,21 +99,21 @@ pInput = pLine `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 addDir :: [DirTree] -> DirTree -> [DirTree]
 addDir [] d = [d]
 addDir (x : xs) d =
-  if label d == label x
+  if (label . rootLabel) d == (label . rootLabel) x
     then mergeDirs d x : xs
     else x : addDir xs d
   where
-    mergeDirs (DirNode n fs1 ds1) (DirNode _ fs2 ds2) =
-      DirNode n (fs1 `union` fs2) $ foldl' addDir ds1 ds2
+    mergeDirs (Node (DirLabel n fs1) ds1) (Node (DirLabel _ fs2) ds2) =
+      Node (DirLabel n $ fs1 `union` fs2) $ foldl' addDir ds1 ds2
 
 hDirTree :: DirTree -> [Line] -> (DirTree, [Line])
 hDirTree d [] = (d, [])
-hDirTree d@(DirNode n fs ds) (x : xs) = case x of
+hDirTree d@(Node l@(DirLabel n fs) ds) (x : xs) = case x of
   (LDir (Dir n')) ->
-    let d' = DirNode n fs (addDir ds $ emptyDirTree n')
+    let d' = Node l (addDir ds $ emptyDirTree n')
      in hDirTree d' xs
   (LFile f) ->
-    let d' = DirNode n (fs `union` [f]) ds
+    let d' = Node (DirLabel n $ fs `union` [f]) ds
      in hDirTree d' xs
   (LCmd c) -> case c of
     -- Ignore 'ls' commands.
@@ -119,14 +124,43 @@ hDirTree d@(DirNode n fs ds) (x : xs) = case x of
     (Cd (CdDir n')) ->
       let (d', xs') = hDirTree (emptyDirTree n') xs
           ds' = addDir ds d'
-       in hDirTree (DirNode n fs ds') xs'
+       in hDirTree (Node (DirLabel n fs) ds') xs'
 
 hInput :: [Line] -> DirTree
 hInput ((LCmd (Cd CdRoot)) : xs) = fst $ hDirTree (emptyDirTree "/") xs
 hInput _ = error "hInput: no cd /"
 
+calculateDirSizes :: DirTree -> Tree Natural
+calculateDirSizes (Node (DirLabel _ fs) ds) = Node (f + d) ds'
+  where
+    ds' = map calculateDirSizes ds
+    f = sum $ map fSize fs
+    d = sum $ map rootLabel ds'
+
+totSpace :: Natural
+totSpace = 70000000
+
+needSpace :: Natural
+needSpace = 30000000
+
+findPerfectDir :: Natural -> [Natural] -> Natural
+findPerfectDir totSize = go
+  where
+    spaceLeft = totSpace - totSize
+    needDelete = needSpace - spaceLeft
+    go [] = error "findPerfectDir: go: no perfect dir"
+    go (y : ys) = if y > needDelete then y else go ys
+
 main :: IO ()
 main = do
-  b <- TL.readFile "inputs/input07-sample.txt"
+  b <- TL.readFile "inputs/input07.txt"
   let ls = either error id $ parseOnly pInput b
-  print $ hInput ls
+      dt = hInput ls
+      st = calculateDirSizes dt
+  -- Part 1.
+  print $ foldMap (\s -> if s <= 100000 then Sum s else Sum 0) st
+  -- Part 2.
+  let ds = sort $ toList st
+      totSize = rootLabel st
+      thePerfectDir = findPerfectDir totSize ds
+  print thePerfectDir
