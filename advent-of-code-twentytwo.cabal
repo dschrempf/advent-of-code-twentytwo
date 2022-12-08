@@ -146,3 +146,12 @@ executable day08
     , base      >=4.7 && <5
     , matrices
     , vector
+
+executable day09
+  import:          common, exec
+  main-is:         Day09.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
