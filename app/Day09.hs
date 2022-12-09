@@ -51,8 +51,7 @@ pInput = pMoveN `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 type Position = (Int, Int)
 
 data State = State
-  { positionHead :: Position,
-    positionTail :: Position,
+  { positions :: [Position],
     visited :: HS.HashSet Position
   }
   deriving (Show, Eq)
@@ -72,16 +71,25 @@ followP (iH, jH) (iT, jT)
     dy = abs $ jH - jT
     d = max dx dy
 
-move :: Move -> State -> State
-move m (State (i, j) t v) = State h' t' v'
+moveHead :: Move -> Position -> Position
+moveHead m (i, j) = case m of
+  U -> (i, j + 1)
+  L -> (i - 1, j)
+  D -> (i, j - 1)
+  R -> (i + 1, j)
+
+moveAll :: Move -> [Position] -> [Position]
+moveAll m (h : ts) = xs'
   where
-    h' = case m of
-      U -> (i, j + 1)
-      L -> (i - 1, j)
-      D -> (i, j - 1)
-      R -> (i + 1, j)
-    t' = followP h' t
-    v' = HS.insert t' v
+    h' = moveHead m h
+    xs' = scanl' followP h' ts
+moveAll _ [] = error "moveAll: empty rope"
+
+move :: Move -> State -> State
+move m (State xs v) = State xs' v'
+  where
+    xs' = moveAll m xs
+    v' = HS.insert (last xs') v
 
 moveN :: State -> MoveN -> State
 moveN s (MoveN m n) = nTimes n (move m) s
@@ -93,6 +101,9 @@ main = do
   d <- BS.readFile "inputs/input09.txt"
   let ms = either error id $ parseOnly pInput d
       p0 = (0, 0)
-      s0 = State p0 p0 $ HS.singleton p0
-      sf = foldl' moveN s0 ms
-  print $ HS.size $ visited sf
+      s0With n = State (replicate n p0) $ HS.singleton p0
+      sfWith n = foldl' moveN (s0With n) ms
+  -- Part 1.
+  print $ HS.size $ visited $ sfWith 2
+  -- Part 2.
+  print $ HS.size $ visited $ sfWith 10
