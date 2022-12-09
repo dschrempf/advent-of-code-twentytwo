@@ -3,3 +3,7 @@ on [Wikipedia](https://en.wikipedia.org/wiki/Advent_of_Code)). So I thought I am
 
 **These are mine!**
 
+([Want](https://github.com/Scriptim/AdventOfCode2022) [some](https://github.com/hrichharms/AoC_2022) [more](https://github.com/Lorin-Lange/Advent-of-Code-2022)? [And](https://github.com/prikhi/advent-of-code-2022) &#x2014; [well](https://github.com/Sheinxy/Advent2022) &#x2014; [more](https://github.com/IndecisionTree/adventofcode2022)?)
+
+If you ask me, the [solution of Scriptim](https://github.com/Scriptim/AdventOfCode2022) are great!
+
