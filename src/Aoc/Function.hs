@@ -15,7 +15,7 @@ module Aoc.Function
 where
 
 nTimes :: Int -> (a -> a) -> a -> a
-nTimes 1 f x = f x
-nTimes n f x
-  | n < 1 = error "nTimes: negative n"
-  | otherwise = nTimes (n - 1) f $ f x
+nTimes n f x = case compare n 1 of
+  LT -> error $ "nTimes: n zero or negative: " ++ show n
+  EQ -> f x
+  GT -> nTimes (n - 1) f $ f x
