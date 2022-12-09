@@ -32,9 +32,6 @@ getPosFirstData n x = go n (TL.take n x) (TL.drop n x)
     go :: Int64 -> TL.Text -> TL.Text -> Int64
     go p w t = if containsDouble n w then p else go (p + 1) (TL.tail w `TL.snoc` TL.head t) $ TL.tail t
 
--- Nothing -> error "getPosFirstData: go: reached end of input"
--- (Just (x, xs)) -> undefined
-
 main :: IO ()
 main = do
   d <- TL.strip <$> TL.readFile "inputs/input06.txt"

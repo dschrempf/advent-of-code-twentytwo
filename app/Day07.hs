@@ -29,11 +29,27 @@ import qualified Data.Text.Lazy.IO as TL
 import Data.Tree
 import Numeric.Natural
 
+pAtom :: Parser TS.Text
+pAtom = takeWhile1 (not . isSpace)
+
 data File = File
   { fName :: TS.Text,
     fSize :: Natural
   }
   deriving (Show, Eq)
+
+pFile :: Parser File
+pFile = do
+  d <- decimal
+  _ <- char ' '
+  n <- pAtom
+  pure $ File n d
+
+newtype Dir = Dir {getDirName :: TS.Text}
+  deriving (Show)
+
+pDir :: Parser Dir
+pDir = string "dir " *> (Dir <$> pAtom)
 
 data DirLabel = DirLabel
   { label :: TS.Text,
@@ -52,9 +68,6 @@ data CdCmd = CdRoot | CdUp | CdDir TS.Text
 data Cmd = Cd CdCmd | Ls
   deriving (Show, Eq)
 
-pAtom :: Parser TS.Text
-pAtom = takeWhile1 (not . isSpace)
-
 pCdCmd :: Parser CdCmd
 pCdCmd = string "cd " *> (pCdRoot <|> pCdUp <|> pCdDir)
   where
@@ -67,19 +80,6 @@ pCmd = string "$ " *> (pCd <|> pLs)
   where
     pCd = Cd <$> pCdCmd
     pLs = Ls <$ string "ls"
-
-pFile :: Parser File
-pFile = do
-  d <- decimal
-  _ <- char ' '
-  n <- pAtom
-  pure $ File n d
-
-newtype Dir = Dir {getDirName :: TS.Text}
-  deriving (Show)
-
-pDir :: Parser Dir
-pDir = string "dir " *> (Dir <$> pAtom)
 
 data Line = LCmd Cmd | LFile File | LDir Dir
   deriving (Show)
@@ -94,8 +94,8 @@ pInput = pLine `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 --
 -- Meh, this function turned out to be a bit complicated. The problem is, we do
 -- not know if the directory is already in the list. Also, we do not know if all
--- the sub-(sub-...) are in the list, so we have to recursively go through them
--- (see 'mergeDirs').
+-- the sub(-sub-...)-directories are in the list, so we have to recursively go
+-- through them (see 'mergeDirs').
 addDir :: [DirTree] -> DirTree -> [DirTree]
 addDir [] d = [d]
 addDir (x : xs) d =
@@ -147,13 +147,11 @@ totSpace = 70000000
 needSpace :: Natural
 needSpace = 30000000
 
-findPerfectDir :: Natural -> [Natural] -> Natural
-findPerfectDir totSize = go
+findPerfectDir :: Natural -> [Natural] -> Maybe Natural
+findPerfectDir totSize = find (> needDelete)
   where
     spaceLeft = totSpace - totSize
     needDelete = needSpace - spaceLeft
-    go [] = error "findPerfectDir: go: no perfect dir"
-    go (y : ys) = if y > needDelete then y else go ys
 
 main :: IO ()
 main = do

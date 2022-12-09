@@ -31,19 +31,18 @@ isVisible :: Field -> (Int, Int) -> Int -> Bool
 isVisible f (i, j) s =
   any
     v
-    [ VU.take j theRow,
-      VU.drop (j + 1) theRow,
-      VU.take i theCol,
-      VU.drop (i + 1) theCol
+    [ VU.take j thisRow,
+      VU.drop (j + 1) thisRow,
+      VU.take i thisCol,
+      VU.drop (i + 1) thisCol
     ]
   where
     v = isVisibleOneDirection s
-    theRow = MU.takeRow f i
-    theCol = MU.takeColumn f j
+    thisRow = MU.takeRow f i
+    thisCol = MU.takeColumn f j
 
 isVisibleOneDirection :: Int -> VU.Vector Int -> Bool
 isVisibleOneDirection s v
-  | VU.null v = True
   | VU.any (>= s) v = False
   | otherwise = True
 
@@ -54,15 +53,15 @@ scenicScore f (i, j) s =
   product $
     map
       v
-      [ VU.reverse $ VU.take j theRow,
-        VU.drop (j + 1) theRow,
-        VU.reverse $ VU.take i theCol,
-        VU.drop (i + 1) theCol
+      [ VU.reverse $ VU.take j thisRow,
+        VU.drop (j + 1) thisRow,
+        VU.reverse $ VU.take i thisCol,
+        VU.drop (i + 1) thisCol
       ]
   where
     v = nVisible s
-    theRow = MU.takeRow f i
-    theCol = MU.takeColumn f j
+    thisRow = MU.takeRow f i
+    thisCol = MU.takeColumn f j
 
 nVisible :: Int -> VU.Vector Int -> Int
 nVisible s xs = if VU.null rest then n else n + 1
