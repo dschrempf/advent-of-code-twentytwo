@@ -1,5 +1,5 @@
 cabal-version:      3.4
-name:               advent-of-code-twentytwo
+name:               aoc
 version:            0.1.0.0
 synopsis:           Advent of code, 2022
 description:
@@ -49,6 +49,15 @@ common exec
   ghc-options:
     -Wall -Wunused-packages -Wredundant-constraints -threaded -rtsopts
     -with-rtsopts=-N
+
+library
+  import:          common, lib
+  exposed-modules: Aoc.Function
+  hs-source-dirs:  src
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
 
 executable day01
   import:          common, exec
@@ -107,6 +116,7 @@ executable day05
   autogen-modules:
   ghc-options:
   build-depends:
+    , aoc
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
@@ -154,4 +164,9 @@ executable day09
   other-modules:
   autogen-modules:
   ghc-options:
-  build-depends:   base >=4.7 && <5
+  build-depends:
+    , aoc
+    , attoparsec
+    , base                  >=4.7 && <5
+    , bytestring
+    , unordered-containers

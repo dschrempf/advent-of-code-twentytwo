@@ -18,6 +18,7 @@ module Main
   )
 where
 
+import Aoc.Function
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
@@ -91,12 +92,6 @@ push i c xs = take j xs ++ [c : x] ++ drop (j + 1) xs
 
 move :: Int -> Int -> [Stack] -> [Stack]
 move f t xs = let (c, xs') = pop f xs in push t c xs'
-
-nTimes :: Int -> (a -> a) -> a -> a
-nTimes 1 f x = f x
-nTimes n f x
-  | n < 1 = error "nTimes: negative n"
-  | otherwise = nTimes (n - 1) f $ f x
 
 moveN :: [Stack] -> Move -> [Stack]
 moveN xs (Move n f t) = nTimes n (move f t) xs
