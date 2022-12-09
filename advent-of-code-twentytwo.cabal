@@ -170,3 +170,12 @@ executable day09
     , base                  >=4.7 && <5
     , bytestring
     , unordered-containers
+
+executable day10
+  import:          common, exec
+  main-is:         Day10.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
