@@ -52,7 +52,10 @@ common exec
 
 library
   import:          common, lib
-  exposed-modules: Aoc.Function
+  exposed-modules:
+    Aoc.Function
+    Aoc.List
+
   hs-source-dirs:  src
   other-modules:
   autogen-modules:
@@ -179,6 +182,7 @@ executable day10
   autogen-modules:
   ghc-options:
   build-depends:
+    , aoc
     , attoparsec
     , base        >=4.7 && <5
     , bytestring

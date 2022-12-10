@@ -19,12 +19,13 @@ module Main
   )
 where
 
+import Aoc.List
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
 import Data.List
 
-newtype X = X Int
+newtype X = X {getX :: Int}
   deriving (Show, Eq)
   deriving (Num) via Int
 
@@ -47,10 +48,20 @@ evalStep [] _ = error "evalStep: empty register"
 evalStep (x : xs) Noop = x : x : xs
 evalStep (x : xs) (Addx n) = (x + X n) : x : x : xs
 
-signalStrengths :: [X] -> [X]
-signalStrengths xs = [X i * (xs !! pred i) | i <- [20, 60 .. l]]
+signalStrengths :: [X] -> [Int]
+signalStrengths xs = [getX $ X i * (xs !! pred i) | i <- [20, 60 .. l]]
   where
     l = length xs
+
+draw :: Int -> X -> Char
+draw n (X m)
+  | n == pred m || n == m || n == succ m = '#'
+  | otherwise = '.'
+
+drawAll :: [X] -> [String]
+drawAll xs = [zipWith draw [0 .. 40] ln | ln <- lns]
+  where
+    lns = chop 40 xs
 
 main :: IO ()
 main = do
@@ -59,6 +70,6 @@ main = do
   let is = either error id $ parseOnly pInput b
       cs = reverse $ foldl' evalStep [X 1] is
       ss = signalStrengths cs
-  print $ length ss
-  print ss
   print $ sum ss
+  -- Part 2.
+  mapM_ print $ drawAll cs
