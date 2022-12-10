@@ -179,3 +179,12 @@ executable day10
   autogen-modules:
   ghc-options:
   build-depends:   base >=4.7 && <5
+
+executable day11
+  import:          common, exec
+  main-is:         Day11.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
