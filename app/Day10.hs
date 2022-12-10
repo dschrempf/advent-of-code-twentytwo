@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Main
--- Description :  Day 10; ?
+-- Description :  Day 10; Cathode-Ray Tube
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
