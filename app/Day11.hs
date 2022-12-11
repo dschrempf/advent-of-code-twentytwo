@@ -22,13 +22,15 @@ import Control.Applicative
 import Data.Attoparsec.Text
 import Data.Maybe
 import qualified Data.Text as TS
+import qualified Data.Text.IO as TS
+import qualified Data.Vector as V
 
 data Monkey = Monkey
   { items :: [Int],
-    fun :: Int -> Int,
-    test :: Int -> Bool,
-    throwT :: Int,
-    throwF :: Int
+    _fun :: Int -> Int,
+    _test :: Int -> Bool,
+    _throwT :: Int,
+    _throwF :: Int
   }
 
 pItems :: Parser [Int]
@@ -57,15 +59,51 @@ pTest = f <$> (string "  Test: divisible by " *> decimal)
 pThrowTo :: TS.Text -> Parser Int
 pThrowTo w = string "    If " *> string w *> string ": throw to monkey " *> decimal
 
-pMonkey :: Parser (Int, Monkey)
+pMonkey :: Parser Monkey
 pMonkey = do
-  n <- string " Monkey " *> decimal <* char ':' <* endOfLine
+  _ <- string "Monkey " *> (decimal :: Parser Int) <* char ':' <* endOfLine
   xs <- pItems <* endOfLine
   f <- pFun <* endOfLine
   t <- pTest <* endOfLine
   tt <- pThrowTo "true" <* endOfLine
   tf <- pThrowTo "false" <* optional endOfLine
-  pure (n, Monkey xs f t tt tf)
+  pure $ Monkey xs f t tt tf
+
+data State = State
+  { current :: Int,
+    _monkeys :: V.Vector Monkey
+  }
+
+pInput :: Parser State
+pInput = State 0 . V.fromList <$> pMonkey `sepBy1'` skipSpace
+
+throw1 :: Int -> V.Vector Monkey -> V.Vector Monkey
+throw1 n ms = case ms V.! n of
+  monkeyN@(Monkey (i : is) f t tr fa) ->
+    let monkeyN' = monkeyN {items = is}
+        newWorry = f i `div` 3
+        m = if t newWorry then tr else fa
+        -- Assume that monkeys do not throw to themselves.
+        monkeyM@(Monkey isM _ _ _ _) = ms V.! m
+        -- This is slow, but who cares.
+        monkeyM' = monkeyM {items = isM ++ [i]}
+     in ms V.// [(n, monkeyN'), (m, monkeyM')]
+  _ -> error "throw1: empty monkey"
+
+throw :: State -> [State]
+throw (State i ms)
+  | stop = [x']
+  | otherwise = x' : throw x'
+  where
+    is = items $ ms V.! i
+    nMs = V.length ms
+    nIs = length is
+    (i', stop) = if nIs == 1 then (i + 1 `mod` nMs, i == nMs - 1) else (i, False)
+    x' = State i' $ throw1 i' ms
 
 main :: IO ()
-main = undefined
+main = do
+  d <- TS.readFile "inputs/input11.txt"
+  let s = either error id $ parseOnly pInput d
+      t = throw s
+  print $ map current t
