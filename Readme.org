@@ -5,4 +5,4 @@ on [[https://en.wikipedia.org/wiki/Advent_of_Code][Wikipedia]]). So I thought I 
 
 ([[https://github.com/Scriptim/AdventOfCode2022][Want]] [[https://github.com/hrichharms/AoC_2022][some]] [[https://github.com/Lorin-Lange/Advent-of-Code-2022][more]]? [[https://github.com/prikhi/advent-of-code-2022][And]] --- [[https://github.com/Sheinxy/Advent2022][well]] --- [[https://github.com/IndecisionTree/adventofcode2022][more]]?)
 
-If you ask me, the [[https://github.com/Scriptim/AdventOfCode2022][solution of Scriptim]] are great!
+If you ask me, the solutions of [[https://github.com/Sheinxy/Advent2022][Sheinxy]] and [[https://github.com/Scriptim/AdventOfCode2022][Scriptim]] are great!

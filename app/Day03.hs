@@ -63,7 +63,6 @@ main = do
   t <- T.readFile "inputs/input03.txt"
   -- Part 1.
   let xs = either error id $ parseOnly pInput t
-      ds = map findDuplicate xs
-  print $ sum $ map priority ds
+  print $ sum $ map (priority . findDuplicate) xs
   -- Part 2.
   print $ sum $ map priority $ findAllShared xs
