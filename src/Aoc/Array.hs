@@ -53,6 +53,6 @@ neighborsNoDiagonal s p =
     (i, j) = fromIx2 p
 
 break :: Manifest r e => (e -> Bool) -> Vector r e -> (Vector r e, Vector r e)
-break p xs = sliceAt (Sz1 i) xs
+break p xs = sliceAt i xs
   where
-    i = fromMaybe 0 $ findIndex p xs
+    i = maybe (size xs) Sz $ findIndex p xs
