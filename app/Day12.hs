@@ -74,23 +74,22 @@ pocket xs (State ps _) = isJust $ find p $ map head ps
   where
     p i = (xs A.! i) == 27
 
+findShortestPath :: Landscape -> State -> Int
+findShortestPath xs = pred . length . head . paths . fromJust . find (pocket xs) . iterate (step xs)
+
 findShortestPath1 :: Landscape -> A.Ix2 -> Int
-findShortestPath1 xs i0 = pred $ length $ head $ paths sol
+findShortestPath1 xs i0 = findShortestPath xs s0
   where
-    p0 = [i0]
+    ps0 = [[i0]]
     v0 = S.singleton i0
-    s0 = State [p0] v0
-    ss = iterate (step xs) s0
-    sol = fromJust $ find (pocket xs) ss
+    s0 = State ps0 v0
 
 findShortestPath2 :: Landscape -> [A.Ix2] -> Int
-findShortestPath2 xs is0 = pred $ length $ head $ paths sol
+findShortestPath2 xs is0 = findShortestPath xs s0
   where
     ps0 = [[i] | i <- is0]
     v0 = S.fromList is0
     s0 = State ps0 v0
-    ss = iterate (step xs) s0
-    sol = fromJust $ find (pocket xs) ss
 
 main :: IO ()
 main = do
