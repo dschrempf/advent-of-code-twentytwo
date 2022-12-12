@@ -79,7 +79,13 @@ data State = State
 pInput :: Parser State
 pInput = State 0 . V.fromList <$> pMonkey `sepBy1'` skipSpace
 
-throw1 :: Maybe Int -> Int -> V.Vector Monkey -> V.Vector Monkey
+throw1 ::
+  -- Part 1: Nothing, Part 2: Just least common multiple to keep worries bounded.
+  Maybe Int ->
+  -- Which monkey throws?
+  Int ->
+  V.Vector Monkey ->
+  V.Vector Monkey
 throw1 decreaseWorry n ms = case ms V.! n of
   monkeyN@(Monkey (i : is) f t tr fa) ->
     let monkeyN' = monkeyN {items = is}
@@ -95,7 +101,12 @@ throw1 decreaseWorry n ms = case ms V.! n of
      in ms V.// [(n, monkeyN'), (m, monkeyM')]
   _ -> error "throw1: empty monkey"
 
-throw :: Maybe Int -> State -> Maybe ([State], State)
+throw ::
+  -- Part 1: Nothing, Part 2: Just least common multiple to keep worries bounded.
+  Maybe Int ->
+  State ->
+  -- Return type fits 'unfoldr'.
+  Maybe ([State], State)
 throw decreaseWorry (State i ms)
   -- Do not throw, change to first monkey, stop.
   | nIs == 0 && i' == 0 = let x' = State i' ms in Just ([], x')
