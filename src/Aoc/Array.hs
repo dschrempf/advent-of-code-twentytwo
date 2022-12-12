@@ -13,21 +13,38 @@
 -- Creation date: Mon Dec 12 11:41:00 2022.
 module Aoc.Array
   ( neighbors,
+    neighborsNoDiagonal,
   )
 where
 
 import Data.Massiv.Array
 
-neighbors :: Sz Ix2 -> Ix2 -> [Ix2]
-neighbors s p =
+stencil :: Sz Ix2 -> Ix2 -> [(Int, Int)]
+stencil s p =
   [ p'
     | f <- [pred, id, succ],
-      let i' = f i,
       g <- [pred, id, succ],
-      let j' = g j,
+      let p' = (f i, g j),
+      isSafeIndex s (toIx2 p')
+  ]
+  where
+    (i, j) = fromIx2 p
+
+neighbors :: Sz Ix2 -> Ix2 -> [Ix2]
+neighbors s p =
+  [ toIx2 (i', j')
+    | (i', j') <- stencil s p,
+      not (i' == i && j' == j)
+  ]
+  where
+    (i, j) = fromIx2 p
+
+neighborsNoDiagonal :: Sz Ix2 -> Ix2 -> [Ix2]
+neighborsNoDiagonal s p =
+  [ toIx2 (i', j')
+    | (i', j') <- stencil s p,
       not (i' == i && j' == j),
-      let p' = toIx2 (i', j'),
-      isSafeIndex s p'
+      i' == i || j' == j
   ]
   where
     (i, j) = fromIx2 p

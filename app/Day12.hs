@@ -18,9 +18,10 @@ where
 
 import Aoc.Array
 import Control.Applicative
-import Data.Attoparsec.ByteString.Char8
+import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
 import Data.Char
+import Data.List
 import qualified Data.Massiv.Array as A
 import Data.Maybe
 import qualified Data.Set as S
@@ -38,62 +39,67 @@ pHeight :: Parser Int
 pHeight = cToI <$> letter_ascii
 
 pLandscape :: Parser Landscape
-pLandscape = fromLists' Seq <$> some pHeight `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+pLandscape = A.fromLists' A.Seq <$> some pHeight `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
--- type PathTree = Tree (Ix2, S.Set Ix2)
-
--- pathTree :: Landscape -> Ix2 -> S.Set Ix2 -> Maybe PathTree
--- pathTree x i v
---   | h == 27 = Just $ Node (i, v) []
---   | otherwise = if null daughters then Nothing else Just $ Node (i, S.singleton i) daughters
---   where
---     h = x ! i
---     daughters =
---       catMaybes
---         [ pathTree x n (S.insert n v)
---           | n <- neighbors (size x) i,
---             n `S.notMember` v,
---             let h' = x ! n,
---             h' <= h + 1
---         ]
-
-data Path = Path
-  { path :: [Ix2],
-    len :: Int
-  }
+type Path = [A.Ix2]
 
 data State = State
   { paths :: [Path],
-    visited :: S.Set Ix2
+    visited :: S.Set A.Ix2
   }
+  deriving (Show)
 
-stepP :: Landscape -> S.Set Ix2 -> Path -> [(Ix2, Path)]
-stepP _ _ (Path [] _) = error "stepP: empty path"
-stepP xs vs (Path (p : ps) l) =
-  [ (n, Path (n : p : ps) (l + 1))
-    | n <- neighbors sz p,
+stepP :: Landscape -> S.Set A.Ix2 -> Path -> [(A.Ix2, Path)]
+stepP _ _ [] = error "stepP: empty path"
+stepP xs vs (p : ps) =
+  [ (n, n : p : ps)
+    | n <- neighborsNoDiagonal sz p,
       n `S.notMember` vs,
-      let h' = xs ! n,
+      let h' = xs A.! n,
       h' <= h + 1
   ]
   where
-    sz = size xs
-    h = xs ! p
+    sz = A.size xs
+    h = xs A.! p
 
 step :: Landscape -> State -> State
-step xs (State ps vs) = State ps' vs'
+step xs (State ps vs) = State ps'' vs'
   where
     (ns', ps') = unzip $ concatMap (stepP xs vs) ps
+    ps'' = nubBy (\x y -> head x == head y) ps'
     vs' = vs `S.union` S.fromList ns'
 
-pocket :: State -> Bool
-pocket (State ps _) = 27 `elem` map head ps
+pocket :: Landscape -> State -> Bool
+pocket xs (State ps _) = isJust $ find p $ map head ps
+  where
+    p i = (xs A.! i) == 27
+
+findShortestPath1 :: Landscape -> A.Ix2 -> Int
+findShortestPath1 xs i0 = pred $ length $ head $ paths sol
+  where
+    p0 = [i0]
+    v0 = S.singleton i0
+    s0 = State [p0] v0
+    ss = iterate (step xs) s0
+    sol = fromJust $ find (pocket xs) ss
+
+findShortestPath2 :: Landscape -> [A.Ix2] -> Int
+findShortestPath2 xs is0 = pred $ length $ head $ paths sol
+  where
+    ps0 = [[i] | i <- is0]
+    v0 = S.fromList is0
+    s0 = State ps0 v0
+    ss = iterate (step xs) s0
+    sol = fromJust $ find (pocket xs) ss
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input12-sample.txt"
-  let x = either error id $ parseOnly pLandscape d
-      s = fromJust $ findIndex (== 0) x
-      t = pathTree x s (S.singleton s)
-  print s
-  print t
+  d <- BS.readFile "inputs/input12.txt"
+  let xs = either error id $ parseOnly pLandscape d
+      i0 = fromJust $ A.findIndex (== 0) xs
+  -- Part 1.
+  print $ findShortestPath1 xs i0
+  -- Part 2.
+  let is0 = A.fold $ A.imap (\ix e -> [ix | e == 0 || e == 1]) xs
+      ls = findShortestPath2 xs is0
+  print ls
