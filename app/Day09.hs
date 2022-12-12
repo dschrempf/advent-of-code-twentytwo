@@ -18,12 +18,20 @@ module Main
   )
 where
 
-import Aoc.Function
-import Control.Applicative
-import Data.Attoparsec.ByteString.Char8 hiding (D)
+import Aoc.Function (nTimes)
+import Control.Applicative (Alternative ((<|>)), optional)
+import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+  )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.HashSet as HS
-import Data.List
+import Data.List (foldl', scanl')
 
 -- Part 1.
 
@@ -56,12 +64,14 @@ data State = State
   }
   deriving (Show, Eq)
 
+-- Follow in one dimension.
 followI :: Int -> Int -> Int
 followI h t = case compare h t of
   EQ -> t
   GT -> t + 1
   LT -> t - 1
 
+-- Follow in two dimensions.
 followP :: Position -> Position -> Position
 followP (iH, jH) (iT, jT)
   | d >= 2 = (followI iH iT, followI jH jT)
@@ -78,6 +88,7 @@ moveHead m (i, j) = case m of
   D -> (i, j - 1)
   R -> (i + 1, j)
 
+-- First move head, then follow.
 moveAll :: Move -> [Position] -> [Position]
 moveAll m (h : ts) = xs'
   where
@@ -85,6 +96,7 @@ moveAll m (h : ts) = xs'
     xs' = scanl' followP h' ts
 moveAll _ [] = error "moveAll: empty rope"
 
+-- Track the positions of the last element.
 move :: Move -> State -> State
 move m (State xs v) = State xs' v'
   where

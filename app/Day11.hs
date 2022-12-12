@@ -18,13 +18,23 @@ module Main
   )
 where
 
-import Aoc.Occurrence
-import Control.Applicative
-import Data.Attoparsec.Text hiding (count, take)
-import Data.Bifunctor
-import Data.List
+import Aoc.Occurrence (count)
+import Control.Applicative (Alternative ((<|>)), optional)
+import Data.Attoparsec.Text
+  ( Parser,
+    char,
+    decimal,
+    endOfLine,
+    parseOnly,
+    sepBy1,
+    sepBy1',
+    skipSpace,
+    string,
+  )
+import Data.Bifunctor (Bifunctor (first))
+import Data.List (sort, unfoldr)
 import qualified Data.Map.Strict as M
-import Data.Maybe
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as TS
 import qualified Data.Text.IO as TS
 import qualified Data.Vector as V
@@ -80,7 +90,7 @@ pInput :: Parser State
 pInput = State 0 . V.fromList <$> pMonkey `sepBy1'` skipSpace
 
 throw1 ::
-  -- Part 1: Nothing, Part 2: Just least common multiple to keep worries bounded.
+  -- Part 1: Nothing, Part 2: Just product of divisors to keep worries bounded.
   Maybe Int ->
   -- Which monkey throws?
   Int ->
@@ -102,7 +112,7 @@ throw1 decreaseWorry n ms = case ms V.! n of
   _ -> error "throw1: empty monkey"
 
 throw ::
-  -- Part 1: Nothing, Part 2: Just least common multiple to keep worries bounded.
+  -- Part 1: Nothing, Part 2: Just product of divisors to keep worries bounded.
   Maybe Int ->
   State ->
   -- Return type fits 'unfoldr'.
@@ -128,13 +138,13 @@ main = do
       rs1 = take 20 $ unfoldr (throw Nothing) s
       ms1 = count $ map current $ concat rs1
       mb1 = product $ take 2 $ reverse $ sort $ map snd $ M.toList ms1
-  -- mapM_ (print . map (V.map items . monkeys)) rs!
   print ms1
   print mb1
   -- Part 2.
-  -- Find least common multiple.
-  let tMod = V.product $ V.map test $ monkeys s
-  let rs2 = take 10000 $ unfoldr (throw (Just tMod)) s
+  --
+  -- Find product of divisors.
+  let pdiv = V.product $ V.map test $ monkeys s
+  let rs2 = take 10000 $ unfoldr (throw (Just pdiv)) s
       ms2 = count $ map current $ concat rs2
       mb2 = product $ take 2 $ reverse $ sort $ map snd $ M.toList ms2
   print ms2

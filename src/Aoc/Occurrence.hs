@@ -15,7 +15,7 @@ module Aoc.Occurrence
   )
 where
 
-import Data.Foldable
+import Data.Foldable (Foldable (foldl'))
 import qualified Data.Map.Strict as M
 
 type OccurrenceMap a = M.Map a Int

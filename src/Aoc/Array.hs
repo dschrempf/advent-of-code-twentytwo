@@ -19,7 +19,17 @@ module Aoc.Array
 where
 
 import Data.Massiv.Array
-import Data.Maybe
+  ( Index (isSafeIndex),
+    Ix2,
+    Manifest,
+    Size (size),
+    Sz (Sz),
+    Vector,
+    findIndex,
+    fromIx2,
+    sliceAt,
+    toIx2,
+  )
 import Prelude hiding (break)
 
 stencil :: Sz Ix2 -> Ix2 -> [(Int, Int)]

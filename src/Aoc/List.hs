@@ -14,7 +14,7 @@ module Aoc.List
   )
 where
 
--- | Chop up a list in chunks of a given length. O(n).
+-- | Chop up a list into chunks of a given length. O(n).
 --
 -- Copied from Agda.Utils.List.
 chop :: Int -> [a] -> [[a]]

@@ -14,6 +14,7 @@ module Aoc.Function
   )
 where
 
+-- Apply a function @n@ times.
 nTimes :: Int -> (a -> a) -> a -> a
 nTimes n f x = case compare n 1 of
   LT -> error $ "nTimes: n zero or negative: " ++ show n

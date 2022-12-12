@@ -19,11 +19,20 @@ module Main
   )
 where
 
-import Aoc.List
-import Control.Applicative
+import Aoc.List (chop)
+import Control.Applicative (Alternative ((<|>)), optional)
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+    signed,
+    string,
+  )
 import qualified Data.ByteString.Char8 as BS
-import Data.List
+import Data.List (foldl')
 
 newtype X = X {getX :: Int}
   deriving (Show, Eq)
@@ -46,6 +55,7 @@ pInput = pInstruction `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 evalStep :: [X] -> Instruction -> [X]
 evalStep [] _ = error "evalStep: empty register"
 evalStep (x : xs) Noop = x : x : xs
+-- Addition adds two cycles.
 evalStep (x : xs) (Addx n) = (x + X n) : x : x : xs
 
 signalStrengths :: [X] -> [Int]
@@ -72,4 +82,6 @@ main = do
       ss = signalStrengths cs
   print $ sum ss
   -- Part 2.
+  --
+  -- Somehow we end up with an additional '.' at the end.
   mapM_ print $ drawAll cs
