@@ -2,7 +2,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Day 11; ?
+-- Description :  Day 11; Monkey in the Middle
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
