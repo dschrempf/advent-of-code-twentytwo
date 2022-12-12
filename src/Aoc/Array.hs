@@ -14,10 +14,13 @@
 module Aoc.Array
   ( neighbors,
     neighborsNoDiagonal,
+    break,
   )
 where
 
 import Data.Massiv.Array
+import Data.Maybe
+import Prelude hiding (break)
 
 stencil :: Sz Ix2 -> Ix2 -> [(Int, Int)]
 stencil s p =
@@ -48,3 +51,8 @@ neighborsNoDiagonal s p =
   ]
   where
     (i, j) = fromIx2 p
+
+break :: Manifest r e => (e -> Bool) -> Vector r e -> (Vector r e, Vector r e)
+break p xs = sliceAt (Sz1 i) xs
+  where
+    i = fromMaybe 0 $ findIndex p xs

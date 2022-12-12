@@ -109,22 +109,27 @@ addDir (x : xs) d =
 hDirTree :: DirTree -> [Line] -> (DirTree, [Line])
 hDirTree d [] = (d, [])
 hDirTree d@(Node l@(DirLabel n fs) ds) (x : xs) = case x of
+  -- We could ignore directory listings, but to be consistent, we add an empty
+  -- directory tree.
   (LDir (Dir n')) ->
     let d' = Node l (addDir ds $ emptyDirTree n')
      in hDirTree d' xs
+  -- Add the file to the list.
   (LFile f) ->
     let d' = Node (DirLabel n $ fs `union` [f]) ds
      in hDirTree d' xs
   (LCmd c) -> case c of
     -- Ignore 'ls' commands.
     Ls -> hDirTree d xs
-    -- Only handle one level changes.
+    -- Only handle directory level changes with depth 1.
     (Cd CdRoot) -> error "hDirTree: jump to root"
     (Cd CdUp) -> (d, xs)
     (Cd (CdDir n')) ->
+      -- First traverse the subdirectory.
       let (d', xs') = hDirTree (emptyDirTree n') xs
           ds' = addDir ds d'
-       in hDirTree (Node (DirLabel n fs) ds') xs'
+       in -- Then, continue with the current directory.
+          hDirTree (Node (DirLabel n fs) ds') xs'
 
 hInput :: [Line] -> DirTree
 hInput ((LCmd (Cd CdRoot)) : xs) = fst $ hDirTree (emptyDirTree "/") xs

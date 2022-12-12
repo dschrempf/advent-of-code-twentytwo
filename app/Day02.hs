@@ -75,9 +75,12 @@ pInput1 = pGame `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 data Desire = Lose | Draw | Win
   deriving (Show, Eq)
 
+-- Desired game.
 data DGame = DGame Move Desire
   deriving (Show, Eq)
 
+-- Use the old input with predetermined moves, and convert it to the new one
+-- with desired moves.
 moveToDesire :: Move -> Desire
 moveToDesire Rock = Lose
 moveToDesire Paper = Draw
@@ -86,6 +89,7 @@ moveToDesire Scissors = Win
 gameToDGame :: Game -> DGame
 gameToDGame (Game e p) = DGame e $ moveToDesire p
 
+-- Determine move to match the desire.
 determineGame :: DGame -> Game
 determineGame (DGame Rock Lose) = Game Rock Scissors
 determineGame (DGame Rock Win) = Game Rock Paper

@@ -78,12 +78,14 @@ createSetupToStacks xs = map catMaybes $ transpose xs
 
 -- Part 1.
 
+-- Pop 'Char' from 'Stack' with given index.
 pop :: Int -> [Stack] -> (Char, [Stack])
 pop i xs = (head x, take j xs ++ [tail x] ++ drop (j + 1) xs)
   where
     j = i - 1
     x = xs !! j
 
+-- Push 'Char' onto 'Stack' with given index.
 push :: Int -> Char -> [Stack] -> [Stack]
 push i c xs = take j xs ++ [c : x] ++ drop (j + 1) xs
   where
@@ -101,12 +103,14 @@ moveAll = foldl' moveN
 
 -- Part 2.
 
+-- Pop @n@ items.
 pop' :: Int -> Int -> [Stack] -> (String, [Stack])
 pop' n i xs = (take n x, take j xs ++ [drop n x] ++ drop (j + 1) xs)
   where
     j = i - 1
     x = xs !! j
 
+-- Push @n@ items.
 push' :: Int -> String -> [Stack] -> [Stack]
 push' i s xs = take j xs ++ [s ++ x] ++ drop (j + 1) xs
   where

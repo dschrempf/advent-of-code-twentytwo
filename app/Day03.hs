@@ -27,6 +27,7 @@ import qualified Data.Text.IO as T
 assembleSet :: T.Text -> S.Set Char
 assembleSet = T.foldl' (flip S.insert) S.empty
 
+-- In retrospect, using 'S.intersection' would have been easier.
 findDuplicate :: T.Text -> Char
 findDuplicate x = fromJust $ T.find (`S.member` s) x2
   where
@@ -47,6 +48,7 @@ priority c
   | isUpper c = ord c - ord 'A' + 27
   | otherwise = error "priority: not an alpha character"
 
+-- Also here, using 'S.intersection' would have been easier.
 findShared :: T.Text -> T.Text -> T.Text -> Char
 findShared a b = fromJust . T.find (\x -> x `S.member` sa && x `S.member` sb)
   where

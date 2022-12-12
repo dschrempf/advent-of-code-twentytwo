@@ -41,18 +41,24 @@ pPair = do
 pInput :: Parser [(Assignment, Assignment)]
 pInput = pPair `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
+-- Does the first assignment contain the second?
 contains :: Assignment -> Assignment -> Bool
 contains (Assignment a b) (Assignment c d) = a <= c && b >= d
 
+-- Does any assignment contain the other?
 contain :: Assignment -> Assignment -> Bool
 contain x y = contains x y || contains y x
 
+-- Does the first assignment overlap the second?
 overlaps :: Assignment -> Assignment -> Bool
 overlaps (Assignment a b) (Assignment c d)
+  -- Does the first assignment cover c?
   | a <= c = b >= c
+  -- Or does the first assignment cover d?
   | b >= d = a <= d
   | otherwise = False
 
+-- Do the assignments overlap?
 overlap :: Assignment -> Assignment -> Bool
 overlap x y = overlaps x y || overlaps y x
 

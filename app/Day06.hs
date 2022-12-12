@@ -23,14 +23,20 @@ import qualified Data.Text.Lazy.IO as TL
 
 -- Part 1 and 2.
 
-containsDouble :: Int64 -> TL.Text -> Bool
-containsDouble n = (== n) . genericLength . nub . TL.unpack
+-- Check if a list contains a value twice.
+containsDuplicate :: Int64 -> TL.Text -> Bool
+containsDuplicate n = (== n) . genericLength . nub . TL.unpack
 
 getPosFirstData :: Int64 -> TL.Text -> Int64
 getPosFirstData n x = go n (TL.take n x) (TL.drop n x)
   where
     go :: Int64 -> TL.Text -> TL.Text -> Int64
-    go p w t = if containsDouble n w then p else go (p + 1) (TL.tail w `TL.snoc` TL.head t) $ TL.tail t
+    -- Traverse windows (this function is definitely missing from "Prelude" or
+    -- "Data.Text").
+    go p w t =
+      if containsDuplicate n w
+        then p
+        else go (p + 1) (TL.tail w `TL.snoc` TL.head t) $ TL.tail t
 
 main :: IO ()
 main = do

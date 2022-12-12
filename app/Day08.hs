@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 -- |
 -- Module      :  Main
 -- Description :  Day 8; Treetop Tree House
@@ -16,66 +18,67 @@ module Main
   )
 where
 
+import qualified Aoc.Array as A
 import Data.List
-import qualified Data.Matrix.Unboxed as MU
-import qualified Data.Vector.Unboxed as VU
+import qualified Data.Massiv.Array as A
+import Data.Semigroup
 
-type Field = MU.Matrix Int
+type Field = A.Array A.U A.Ix2 Int
 
 pField :: String -> Field
-pField = MU.fromLists . map (map (read . singleton)) . lines
+pField = A.fromLists' A.Seq . map (map (read . singleton)) . lines
 
 -- Part 1.
 
-isVisible :: Field -> (Int, Int) -> Int -> Bool
-isVisible f (i, j) s =
+isVisible :: Field -> A.Ix2 -> Int -> Bool
+isVisible f (A.Ix2 i j) s =
   any
     v
-    [ VU.take j thisRow,
-      VU.drop (j + 1) thisRow,
-      VU.take i thisCol,
-      VU.drop (i + 1) thisCol
+    [ A.take (A.Sz1 j) thisRow,
+      A.drop (A.Sz1 $ succ j) thisRow,
+      A.take (A.Sz1 i) thisCol,
+      A.drop (A.Sz1 $ succ i) thisCol
     ]
   where
     v = isVisibleOneDirection s
-    thisRow = MU.takeRow f i
-    thisCol = MU.takeColumn f j
+    thisRow = A.delay $ f A.!> i
+    thisCol = f A.<! j
 
-isVisibleOneDirection :: Int -> VU.Vector Int -> Bool
+isVisibleOneDirection :: A.Source r Int => Int -> A.Vector r Int -> Bool
 isVisibleOneDirection s v
-  | VU.any (>= s) v = False
+  | A.any (>= s) v = False
   | otherwise = True
 
 -- Part 2.
 
-scenicScore :: Field -> (Int, Int) -> Int -> Int
-scenicScore f (i, j) s =
+scenicScore :: Field -> A.Ix2 -> Int -> Int
+scenicScore f (A.Ix2 i j) s =
   product $
     map
       v
-      [ VU.reverse $ VU.take j thisRow,
-        VU.drop (j + 1) thisRow,
-        VU.reverse $ VU.take i thisCol,
-        VU.drop (i + 1) thisCol
+      [ A.reverse A.Dim1 $ A.take (A.Sz1 j) thisRow,
+        A.drop (A.Sz1 $ succ j) thisRow,
+        A.reverse A.Dim1 $ A.take (A.Sz1 i) thisCol,
+        A.drop (A.Sz1 $ succ i) thisCol
       ]
   where
-    v = nVisible s
-    thisRow = MU.takeRow f i
-    thisCol = MU.takeColumn f j
+    v = nVisible s . A.computeAs A.U
+    thisRow = A.delay $ f A.!> i
+    thisCol = f A.<! j
 
-nVisible :: Int -> VU.Vector Int -> Int
-nVisible s xs = if VU.null rest then n else n + 1
+nVisible :: (A.Manifest r Int, A.Shape r Int) => Int -> A.Vector r Int -> Int
+nVisible s xs = if A.isNull rest then n else n + 1
   where
-    (smaller, rest) = VU.break (>= s) xs
-    n = VU.length smaller
+    (smaller, rest) = A.break (>= s) xs
+    n = A.unSz $ A.size smaller
 
 main :: IO ()
 main = do
   d <- readFile "inputs/input08.txt"
   let f = pField d
-      v = MU.imap (isVisible f) f
+      v = A.imap (isVisible f) f
   -- Part 1.
-  print $ MU.foldl (+) 0 $ MU.map (\b -> if b then 1 else 0 :: Int) v
+  print $ A.fold $ A.map (\b -> if b then 1 else 0 :: Sum Int) v
   -- Part 2.
-  let n = MU.imap (scenicScore f) f
-  print $ MU.foldl max 0 n
+  let n = A.imap (scenicScore f) f
+  print $ A.fold $ A.map Max n
