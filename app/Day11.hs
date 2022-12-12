@@ -56,7 +56,7 @@ pFun = do
     f m1 m2 o x = fromMaybe x m1 `o` fromMaybe x m2
 
 pTest :: Parser Int
-pTest = (string "  Test: divisible by " *> decimal)
+pTest = string "  Test: divisible by " *> decimal
 
 pThrowTo :: TS.Text -> Parser Int
 pThrowTo w = string "    If " *> string w *> string ": throw to monkey " *> decimal
