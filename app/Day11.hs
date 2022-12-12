@@ -18,8 +18,12 @@ module Main
   )
 where
 
+import Aoc.Occurrence
 import Control.Applicative
-import Data.Attoparsec.Text
+import Data.Attoparsec.Text hiding (count, take)
+import Data.Bifunctor
+import Data.List
+import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Text as TS
 import qualified Data.Text.IO as TS
@@ -28,7 +32,7 @@ import qualified Data.Vector as V
 data Monkey = Monkey
   { items :: [Int],
     _fun :: Int -> Int,
-    _test :: Int -> Bool,
+    test :: Int,
     _throwT :: Int,
     _throwF :: Int
   }
@@ -51,10 +55,8 @@ pFun = do
     f :: Maybe Int -> Maybe Int -> (Int -> Int -> Int) -> (Int -> Int)
     f m1 m2 o x = fromMaybe x m1 `o` fromMaybe x m2
 
-pTest :: Parser (Int -> Bool)
-pTest = f <$> (string "  Test: divisible by " *> decimal)
-  where
-    f d x = x `mod` d == 0
+pTest :: Parser Int
+pTest = (string "  Test: divisible by " *> decimal)
 
 pThrowTo :: TS.Text -> Parser Int
 pThrowTo w = string "    If " *> string w *> string ": throw to monkey " *> decimal
@@ -71,39 +73,58 @@ pMonkey = do
 
 data State = State
   { current :: Int,
-    _monkeys :: V.Vector Monkey
+    monkeys :: V.Vector Monkey
   }
 
 pInput :: Parser State
 pInput = State 0 . V.fromList <$> pMonkey `sepBy1'` skipSpace
 
-throw1 :: Int -> V.Vector Monkey -> V.Vector Monkey
-throw1 n ms = case ms V.! n of
+throw1 :: Maybe Int -> Int -> V.Vector Monkey -> V.Vector Monkey
+throw1 decreaseWorry n ms = case ms V.! n of
   monkeyN@(Monkey (i : is) f t tr fa) ->
     let monkeyN' = monkeyN {items = is}
-        newWorry = f i `div` 3
-        m = if t newWorry then tr else fa
+        newWorry = case decreaseWorry of
+          Nothing -> f i `div` 3
+          Just x -> f i `mod` x
+        testFun x = x `mod` t == 0
+        m = if testFun newWorry then tr else fa
         -- Assume that monkeys do not throw to themselves.
         monkeyM@(Monkey isM _ _ _ _) = ms V.! m
         -- This is slow, but who cares.
-        monkeyM' = monkeyM {items = isM ++ [i]}
+        monkeyM' = monkeyM {items = isM ++ [newWorry]}
      in ms V.// [(n, monkeyN'), (m, monkeyM')]
   _ -> error "throw1: empty monkey"
 
-throw :: State -> [State]
-throw (State i ms)
-  | stop = [x']
-  | otherwise = x' : throw x'
+throw :: Maybe Int -> State -> Maybe ([State], State)
+throw decreaseWorry (State i ms)
+  -- Do not throw, change to first monkey, stop.
+  | nIs == 0 && i' == 0 = let x' = State i' ms in Just ([], x')
+  -- Do not throw, change to next monkey.
+  | nIs == 0 = let x' = State i' ms in throw decreaseWorry x'
+  -- Throw, do not change to next monkey.
+  | otherwise = let x' = State i $ throw1 decreaseWorry i ms in first (x' :) <$> throw decreaseWorry x'
   where
-    is = items $ ms V.! i
     nMs = V.length ms
+    is = items $ ms V.! i
     nIs = length is
-    (i', stop) = if nIs == 1 then (i + 1 `mod` nMs, i == nMs - 1) else (i, False)
-    x' = State i' $ throw1 i' ms
+    i' = succ i `mod` nMs
 
 main :: IO ()
 main = do
   d <- TS.readFile "inputs/input11.txt"
+  -- Part 1.
   let s = either error id $ parseOnly pInput d
-      t = throw s
-  print $ map current t
+      rs1 = take 20 $ unfoldr (throw Nothing) s
+      ms1 = count $ map current $ concat rs1
+      mb1 = product $ take 2 $ reverse $ sort $ map snd $ M.toList ms1
+  -- mapM_ (print . map (V.map items . monkeys)) rs!
+  print ms1
+  print mb1
+  -- Part 2.
+  -- Find least common multiple.
+  let tMod = V.product $ V.map test $ monkeys s
+  let rs2 = take 10000 $ unfoldr (throw (Just tMod)) s
+      ms2 = count $ map current $ concat rs2
+      mb2 = product $ take 2 $ reverse $ sort $ map snd $ M.toList ms2
+  print ms2
+  print mb2

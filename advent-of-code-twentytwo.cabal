@@ -55,12 +55,15 @@ library
   exposed-modules:
     Aoc.Function
     Aoc.List
+    Aoc.Occurrence
 
   hs-source-dirs:  src
   other-modules:
   autogen-modules:
   ghc-options:
-  build-depends:   base >=4.7 && <5
+  build-depends:
+    , base        >=4.7 && <5
+    , containers
 
 executable day01
   import:          common, exec
@@ -195,7 +198,9 @@ executable day11
   autogen-modules:
   ghc-options:
   build-depends:
+    , aoc
     , attoparsec
     , base        >=4.7 && <5
+    , containers
     , text
     , vector
