@@ -18,7 +18,7 @@ where
 
 import Control.Applicative
 import Data.Attoparsec.Text
-import Data.Char (isLower, isUpper)
+import Data.Char (isLower, isUpper, ord)
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -43,8 +43,8 @@ pInput = pRucksack `sepBy1` endOfLine <* optional endOfLine <* endOfInput
 
 priority :: Char -> Int
 priority c
-  | isLower c = fromEnum c - fromEnum 'a' + 1
-  | isUpper c = fromEnum c - fromEnum 'A' + 27
+  | isLower c = ord c - ord 'a' + 1
+  | isUpper c = ord c - ord 'A' + 27
   | otherwise = error "priority: not an alpha character"
 
 findShared :: T.Text -> T.Text -> T.Text -> Char
