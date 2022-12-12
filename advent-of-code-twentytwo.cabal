@@ -53,6 +53,7 @@ common exec
 library
   import:          common, lib
   exposed-modules:
+    Aoc.Array
     Aoc.Function
     Aoc.List
     Aoc.Occurrence
@@ -64,6 +65,7 @@ library
   build-depends:
     , base        >=4.7 && <5
     , containers
+    , massiv
 
 executable day01
   import:          common, exec
@@ -159,8 +161,8 @@ executable day08
   autogen-modules:
   ghc-options:
   build-depends:
-    , base    >=4.7 && <5
-    , matrix
+    , base      >=4.7 && <5
+    , matrices
     , vector
 
 executable day09
@@ -213,10 +215,12 @@ executable day12
   autogen-modules:
   ghc-options:
   build-depends:
+    , aoc
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
-    , matrix
+    , containers
+    , massiv
 
 executable day13
   import:          common, exec
