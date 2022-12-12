@@ -159,8 +159,8 @@ executable day08
   autogen-modules:
   ghc-options:
   build-depends:
-    , base      >=4.7 && <5
-    , matrices
+    , base    >=4.7 && <5
+    , matrix
     , vector
 
 executable day09
@@ -208,6 +208,127 @@ executable day11
 executable day12
   import:          common, exec
   main-is:         Day12.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:
+    , attoparsec
+    , base        >=4.7 && <5
+    , bytestring
+    , matrix
+
+executable day13
+  import:          common, exec
+  main-is:         Day13.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day14
+  import:          common, exec
+  main-is:         Day14.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day15
+  import:          common, exec
+  main-is:         Day15.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day16
+  import:          common, exec
+  main-is:         Day16.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day17
+  import:          common, exec
+  main-is:         Day17.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day18
+  import:          common, exec
+  main-is:         Day18.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day19
+  import:          common, exec
+  main-is:         Day19.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day20
+  import:          common, exec
+  main-is:         Day20.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day21
+  import:          common, exec
+  main-is:         Day21.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day22
+  import:          common, exec
+  main-is:         Day22.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day23
+  import:          common, exec
+  main-is:         Day23.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day24
+  import:          common, exec
+  main-is:         Day24.hs
+  hs-source-dirs:  app
+  other-modules:
+  autogen-modules:
+  ghc-options:
+  build-depends:   base >=4.7 && <5
+
+executable day25
+  import:          common, exec
+  main-is:         Day25.hs
   hs-source-dirs:  app
   other-modules:
   autogen-modules:
