@@ -40,11 +40,11 @@ isVisible f (A.Ix2 i j) s =
       A.drop (A.Sz1 $ succ i) thisCol
     ]
   where
-    v = isVisibleOneDirection s
+    v = isVisibleOneDirection s . A.computeAs A.U
     thisRow = A.delay $ f A.!> i
     thisCol = f A.<! j
 
-isVisibleOneDirection :: A.Source r Int => Int -> A.Vector r Int -> Bool
+isVisibleOneDirection :: Int -> A.Vector A.U Int -> Bool
 isVisibleOneDirection s v
   | A.any (>= s) v = False
   | otherwise = True
@@ -66,7 +66,7 @@ scenicScore f (A.Ix2 i j) s =
     thisRow = A.delay $ f A.!> i
     thisCol = f A.<! j
 
-nVisible :: (A.Manifest r Int, A.Shape r Int) => Int -> A.Vector r Int -> Int
+nVisible :: Int -> A.Vector A.U Int -> Int
 nVisible s xs = if A.isNull rest then n else n + 1
   where
     (smaller, rest) = A.break (>= s) xs
