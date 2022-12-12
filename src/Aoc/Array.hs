@@ -43,6 +43,7 @@ stencil s p =
   where
     (i, j) = fromIx2 p
 
+-- | Get the 8 neighbors of a field in a two-dimensional grid.
 neighbors :: Sz Ix2 -> Ix2 -> [Ix2]
 neighbors s p =
   [ toIx2 (i', j')
@@ -52,6 +53,8 @@ neighbors s p =
   where
     (i, j) = fromIx2 p
 
+-- | Like 'neighbors' but only get the 4 direct neighbors, and not the 4
+-- diagonal ones.
 neighborsNoDiagonal :: Sz Ix2 -> Ix2 -> [Ix2]
 neighborsNoDiagonal s p =
   [ toIx2 (i', j')
@@ -62,6 +65,7 @@ neighborsNoDiagonal s p =
   where
     (i, j) = fromIx2 p
 
+-- | Like 'Data.List.break' but for arrays.
 break :: Manifest r e => (e -> Bool) -> Vector r e -> (Vector r e, Vector r e)
 break p xs = sliceAt i xs
   where
