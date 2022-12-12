@@ -18,16 +18,26 @@ module Main
   )
 where
 
-import Control.Applicative
+import Control.Applicative (Alternative ((<|>)), optional)
 import Data.Attoparsec.Text.Lazy
-import Data.Char
-import Data.Foldable
-import Data.List
-import Data.Monoid
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+    string,
+    takeWhile1,
+  )
+import Data.Char (isSpace)
+import Data.Foldable (Foldable (foldl', toList), find)
+import Data.List (sort, union)
+import Data.Monoid (Sum (Sum))
 import qualified Data.Text as TS
 import qualified Data.Text.Lazy.IO as TL
-import Data.Tree
-import Numeric.Natural
+import Data.Tree (Tree (Node, rootLabel))
+import Numeric.Natural (Natural)
 
 pAtom :: Parser TS.Text
 pAtom = takeWhile1 (not . isSpace)

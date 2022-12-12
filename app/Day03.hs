@@ -16,10 +16,18 @@ module Main
   )
 where
 
-import Control.Applicative
+import Control.Applicative (optional)
 import Data.Attoparsec.Text
+  ( Parser,
+    endOfInput,
+    endOfLine,
+    isEndOfLine,
+    parseOnly,
+    sepBy1,
+    takeWhile1,
+  )
 import Data.Char (isLower, isUpper, ord)
-import Data.Maybe
+import Data.Maybe (fromJust)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as T

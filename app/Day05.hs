@@ -18,13 +18,25 @@ module Main
   )
 where
 
-import Aoc.Function
-import Control.Applicative
-import Data.Attoparsec.ByteString.Char8 hiding (take)
+import Aoc.Function (nTimes)
+import Control.Applicative (Alternative ((<|>)))
+import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    anyChar,
+    char,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1,
+    sepBy1',
+    skipSpace,
+    string,
+  )
 import qualified Data.ByteString.Char8 as BS
-import Data.Functor
-import Data.List
-import Data.Maybe
+import Data.Functor (($>))
+import Data.List (foldl', transpose)
+import Data.Maybe (catMaybes)
 
 type Crate = Char
 

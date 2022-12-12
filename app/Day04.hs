@@ -16,10 +16,18 @@ module Main
   )
 where
 
-import Control.Applicative
+import Control.Applicative (optional)
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+  )
 import qualified Data.ByteString.Char8 as BS
-import Numeric.Natural
+import Numeric.Natural (Natural)
 
 data Assignment = Assignment Natural Natural
   deriving (Show)

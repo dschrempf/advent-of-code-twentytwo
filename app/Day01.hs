@@ -16,9 +16,16 @@ module Main
   )
 where
 
-import Control.Applicative
-import Data.Attoparsec.Text.Lazy hiding (take)
-import Data.List
+import Control.Applicative (Alternative (some))
+import Data.Attoparsec.Text.Lazy
+  ( Parser,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+  )
+import Data.List (sort)
 import qualified Data.Text.Lazy.IO as TL
 
 parseCalories :: Parser Int

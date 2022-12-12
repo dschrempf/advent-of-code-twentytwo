@@ -16,8 +16,8 @@ module Main
   )
 where
 
-import Data.Int
-import Data.List
+import Data.Int (Int64)
+import Data.List (genericLength, nub)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TL
 

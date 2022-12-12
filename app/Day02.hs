@@ -16,8 +16,15 @@ module Main
   )
 where
 
-import Control.Applicative
+import Control.Applicative (Alternative ((<|>)), optional)
 import Data.Attoparsec.Text.Lazy
+  ( Parser,
+    char,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+  )
 import qualified Data.Text.Lazy.IO as TL
 
 -- Part 1.

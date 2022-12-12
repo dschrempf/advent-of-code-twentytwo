@@ -19,14 +19,14 @@ module Main
 where
 
 import qualified Aoc.Array as A
-import Data.List
+import Data.List (singleton)
 import qualified Data.Massiv.Array as A
-import Data.Semigroup
+import Data.Semigroup (Max (Max), Sum)
 
 type Field = A.Array A.U A.Ix2 Int
 
 pField :: String -> Field
-pField = A.fromLists' A.Seq . map (map (read . singleton)) . lines
+pField = A.fromLists' A.Seq . map (map (read . Data.List.singleton)) . lines
 
 -- Part 1.
 
@@ -40,7 +40,7 @@ isVisible f (A.Ix2 i j) s =
       A.drop (A.Sz1 $ succ i) thisCol
     ]
   where
-    v = isVisibleOneDirection s . A.computeAs A.U
+    v = isVisibleOneDirection s . A.compute
     thisRow = A.delay $ f A.!> i
     thisCol = f A.<! j
 
@@ -62,7 +62,7 @@ scenicScore f (A.Ix2 i j) s =
         A.drop (A.Sz1 $ succ i) thisCol
       ]
   where
-    v = nVisible s . A.computeAs A.U
+    v = nVisible s . A.compute
     thisRow = A.delay $ f A.!> i
     thisCol = f A.<! j
 
