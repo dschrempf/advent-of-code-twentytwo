@@ -6,4 +6,6 @@ anything substantial such as algorithms or data structures.
 
 ([[https://github.com/Scriptim/AdventOfCode2022][Want]] [[https://github.com/hrichharms/AoC_2022][some]] [[https://github.com/Lorin-Lange/Advent-of-Code-2022][more]]? [[https://github.com/prikhi/advent-of-code-2022][And]] --- [[https://github.com/Sheinxy/Advent2022][well]] --- [[https://github.com/IndecisionTree/adventofcode2022][more]]?)
 
-If you ask me, the solutions of [[https://github.com/Sheinxy/Advent2022][Sheinxy]] and [[https://github.com/Scriptim/AdventOfCode2022][Scriptim]] are great!
+If you ask me, the solutions of [[https://github.com/Sheinxy/Advent2022][Sheinxy]] and [[https://github.com/Scriptim/AdventOfCode2022][Scriptim]] are great! Also, do not
+miss the ones posted by [[https://github.com/MondayMorningHaskell/AdventOfCode/tree/aoc-2022/src][Monday Morning Haskell]], although they do have some
+boilerplate.
