@@ -18,22 +18,36 @@ module Main
   )
 where
 
-import Aoc.List
-import Control.Applicative
+import Aoc.List (chop)
+import Control.Applicative (Alternative ((<|>)))
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    parseOnly,
+    sepBy1',
+    signed,
+    skipSpace,
+    string,
+  )
 import qualified Data.ByteString.Char8 as BS
-
-infixr 5 :.
+import Data.List (elemIndex, sort)
+import Data.Maybe (fromJust)
 
 data Elem = S Int | N NList
   deriving (Eq)
 
-instance Show Elem where
-  showsPrec d (S x) = showsPrec d x
-  showsPrec d (N xs) = showsPrec d xs
+infixr 5 :.
 
 data NList = Elem :. NList | Nil
   deriving (Eq)
+
+-- The 'Show' instances are not necessary but are useful for debugging.
+
+instance Show Elem where
+  showsPrec d (S x) = showsPrec d x
+  showsPrec d (N xs) = showsPrec d xs
 
 instance Show NList where
   -- Show list with brackets.
@@ -41,10 +55,8 @@ instance Show NList where
 
 -- Show list without brackets.
 showsPrec' :: Int -> NList -> ShowS
-showsPrec' d (S i :. Nil) = showsPrec d i
-showsPrec' d (N xs :. Nil) = showsPrec d xs
-showsPrec' d (S i :. xs) = showsPrec d i . showString ", " . showsPrec' d xs
-showsPrec' d (N ys :. xs) = showsPrec d ys . showString ", " . showsPrec' d xs
+showsPrec' d (x :. Nil) = showsPrec d x
+showsPrec' d (x :. xs) = showsPrec d x . showChar ',' . showsPrec' d xs
 showsPrec' _ Nil = id
 
 instance Ord NList where
@@ -80,7 +92,7 @@ pElems = do
   pure $ e :. n
 
 pNext :: Parser NList
-pNext = (string ", " *> pElems) <|> pEnd
+pNext = (char ',' *> pElems) <|> pEnd
 
 pEnd :: Parser NList
 pEnd = Nil <$ char ']'
@@ -130,8 +142,30 @@ hInput = map pair . chop 2
     pair [x, y] = (x, y)
     pair _ = error "pair: no pair"
 
+-- Part 1.
+
+grade :: Int -> Ordering -> Int
+grade n LT = n
+grade _ _ = 0
+
+-- Part 2.
+
+driver1 :: NList
+driver1 = N (S 2 :. Nil) :. Nil
+
+driver2 :: NList
+driver2 = N (S 6 :. Nil) :. Nil
+
 main :: IO ()
 main = do
-  b <- BS.readFile "inputs/input13-sample.txt"
-  let ps = hInput $ either error id $ parseOnly pInput b
-  undefined
+  b <- BS.readFile "inputs/input13.txt"
+  let xs = either error id $ parseOnly pInput b
+  -- Part 1.
+  let ps = hInput xs
+      os = map (uncurry compare) ps
+  print $ sum $ zipWith grade [1 ..] os
+  -- Part 2.
+  let xs' = sort $ driver1 : driver2 : xs
+      i1 = fromJust $ elemIndex driver1 xs'
+      i2 = fromJust $ elemIndex driver2 xs'
+  print $ product $ map (+ 1) [i1, i2]
