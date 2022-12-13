@@ -18,6 +18,7 @@ module Main
   )
 where
 
+import Aoc.List
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
@@ -45,6 +46,21 @@ showsPrec' d (N xs :. Nil) = showsPrec d xs
 showsPrec' d (S i :. xs) = showsPrec d i . showString ", " . showsPrec' d xs
 showsPrec' d (N ys :. xs) = showsPrec d ys . showString ", " . showsPrec' d xs
 showsPrec' _ Nil = id
+
+instance Ord NList where
+  compare Nil Nil = EQ
+  compare _ Nil = GT
+  compare Nil _ = LT
+  compare (S x :. xs) (S y :. ys) = case compare x y of
+    LT -> LT
+    GT -> GT
+    EQ -> compare xs ys
+  compare (S x :. xs) ys = compare (N (S x :. Nil) :. xs) ys
+  compare xs (S y :. ys) = compare xs (N (S y :. Nil) :. ys)
+  compare (N xs :. xss) (N ys :. yss) = case compare xs ys of
+    LT -> LT
+    GT -> GT
+    EQ -> compare xss yss
 
 -- Parse 'NList' with starting bracket.
 pNList :: Parser NList
@@ -105,5 +121,17 @@ pElemN = N <$> pNList
 -- -- nil = []
 -- nil = Nil
 
+pInput :: Parser [NList]
+pInput = pNList `sepBy1'` skipSpace <* skipSpace <* endOfInput
+
+hInput :: [NList] -> [(NList, NList)]
+hInput = map pair . chop 2
+  where
+    pair [x, y] = (x, y)
+    pair _ = error "pair: no pair"
+
 main :: IO ()
-main = undefined
+main = do
+  b <- BS.readFile "inputs/input13-sample.txt"
+  let ps = hInput $ either error id $ parseOnly pInput b
+  undefined
