@@ -74,23 +74,31 @@ pRElemN = do
   xs <- pRList
   ys <- pNext
   case ys of
-    Nil -> pure xs
+    -- This is a bit tricky. Since we do not have a special list end value
+    -- constructor for nested lists, we have to stop early when encountering the
+    -- end of a nested list. Appending 'Nil' would create a new, empty list item.
+    -- Nil -> pure xs
     _ -> pure $ xs ::. ys
 
--- nested = [[1, 2, [1, 2], [2]]]
-nested = 1 :. 2 :. (1 :. 2 :. Nil ::. 2 :. Nil) ::. Nil
+-- Property testing of (parse . show ~ id) would be adequate here.
+pParseShow xs = either error id (parseOnly pRList (BS.pack $ show xs)) == xs
 
--- nesteda = [1, 2, [1, 2], [2]]
-nesteda = 1 :. 2 :. (1 :. 2 :. Nil ::. 2 :. Nil)
+res = map pParseShow [nested0, nested1, nested2, nested3, simple0, simple1, nil]
 
--- nested1 = [[1]]
-nested1 = 1 :. Nil ::. Nil
+-- nested0 = [[1, 2, [1, 2], [2]]]
+nested0 = 1 :. 2 :. (1 :. 2 :. Nil ::. 2 :. Nil) ::. Nil
 
--- nested2 = [[]]
-nested2 = Nil ::. Nil
+-- nested1 = [1, 2, [1, 2], [2]]
+nested1 = 1 :. 2 :. (1 :. 2 :. Nil ::. 2 :. Nil)
 
--- simple = [1, 2]
-simple = 1 :. 2 :. Nil
+-- nested2 = [[1]]
+nested2 = 1 :. Nil ::. Nil
+
+-- nested3 = [[]]
+nested3 = Nil ::. Nil
+
+-- simple0 = [1, 2]
+simple0 = 1 :. 2 :. Nil
 
 -- simple1 = [1]
 simple1 = 1 :. Nil
