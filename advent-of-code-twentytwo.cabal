@@ -229,7 +229,10 @@ executable day13
   other-modules:
   autogen-modules:
   ghc-options:
-  build-depends:   base >=4.7 && <5
+  build-depends:
+    , attoparsec
+    , base        >=4.7 && <5
+    , bytestring
 
 executable day14
   import:          common, exec
