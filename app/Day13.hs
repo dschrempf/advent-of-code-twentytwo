@@ -24,87 +24,86 @@ import qualified Data.ByteString.Char8 as BS
 
 infixr 5 :.
 
-infixr 4 ::.
-
-data RList = Int :. RList | RList ::. RList | Nil
+data Elem = S Int | N NList
   deriving (Eq)
 
-instance Show RList where
+instance Show Elem where
+  showsPrec d (S x) = showsPrec d x
+  showsPrec d (N xs) = showsPrec d xs
+
+data NList = Elem :. NList | Nil
+  deriving (Eq)
+
+instance Show NList where
   -- Show list with brackets.
   showsPrec d xs = showChar '[' . showsPrec' d xs . showChar ']'
 
 -- Show list without brackets.
-showsPrec' :: Int -> RList -> ShowS
-showsPrec' d (i :. Nil) = showsPrec d i
-showsPrec' d (lsl ::. Nil) = showsPrec d lsl
-showsPrec' d (i :. ls) = showsPrec d i . showString ", " . showsPrec' d ls
-showsPrec' d (lsl ::. lsr) = showsPrec d lsl . showString ", " . showsPrec d lsr
-showsPrec' _ _ = id
+showsPrec' :: Int -> NList -> ShowS
+showsPrec' d (S i :. Nil) = showsPrec d i
+showsPrec' d (N xs :. Nil) = showsPrec d xs
+showsPrec' d (S i :. xs) = showsPrec d i . showString ", " . showsPrec' d xs
+showsPrec' d (N ys :. xs) = showsPrec d ys . showString ", " . showsPrec' d xs
+showsPrec' _ Nil = id
 
--- Parse 'RList' with starting bracket.
-pRList :: Parser RList
-pRList = pEmpty <|> pNonEmpty
+-- Parse 'NList' with starting bracket.
+pNList :: Parser NList
+pNList = pEmpty <|> pNonEmpty
 
-pEmpty :: Parser RList
+pEmpty :: Parser NList
 pEmpty = Nil <$ string "[]"
 
-pNonEmpty :: Parser RList
-pNonEmpty = char '[' *> pElem
+pNonEmpty :: Parser NList
+pNonEmpty = char '[' *> pElems
 
--- Parse 'RList' without starting bracket.
-pElem :: Parser RList
-pElem = pRElemS <|> pRElemN
+-- Parse 'NList' without starting bracket.
+pElems :: Parser NList
+pElems = do
+  e <- pElemS <|> pElemN
+  n <- pNext
+  pure $ e :. n
 
-pNext :: Parser RList
-pNext = (string ", " *> pElem) <|> pEnd
+pNext :: Parser NList
+pNext = (string ", " *> pElems) <|> pEnd
 
-pEnd :: Parser RList
+pEnd :: Parser NList
 pEnd = Nil <$ char ']'
 
--- Parse simple list without starting bracket: (Int :. RList).
-pRElemS :: Parser RList
-pRElemS = do
-  i <- signed decimal
-  l <- pNext
-  pure $ i :. l
+-- Parse simple list without starting bracket: (Int :. NList).
+pElemS :: Parser Elem
+pElemS = S <$> signed decimal
 
--- Parse nested list without starting bracket (RList ::. RList).
-pRElemN :: Parser RList
-pRElemN = do
-  xs <- pRList
-  ys <- pNext
-  case ys of
-    -- This is a bit tricky. Since we do not have a special list end value
-    -- constructor for nested lists, we have to stop early when encountering the
-    -- end of a nested list. Appending 'Nil' would create a new, empty list item.
-    -- Nil -> pure xs
-    _ -> pure $ xs ::. ys
+-- Parse nested list without starting bracket (NList ::. NList).
+pElemN :: Parser Elem
+pElemN = N <$> pNList
 
--- Property testing of (parse . show ~ id) would be adequate here.
-pParseShow xs = either error id (parseOnly pRList (BS.pack $ show xs)) == xs
+-- -- Property testing of (parse . show ~ id) would be adequate here.
+-- pParseShow :: NList -> Bool
+-- pParseShow xs = either error id (parseOnly pNList (BS.pack $ show xs)) == xs
 
-res = map pParseShow [nested0, nested1, nested2, nested3, simple0, simple1, nil]
+-- res :: [Bool]
+-- res = map pParseShow [nested0, nested1, nested2, nested3, simple0, simple1, nil]
 
--- nested0 = [[1, 2, [1, 2], [2]]]
-nested0 = 1 :. 2 :. (1 :. 2 :. Nil ::. 2 :. Nil) ::. Nil
+-- -- nested0 = [[1, 2, [1, 2], [2]]]
+-- nested0 = S 1 :. S 2 :. N (N (S 1 :. S 2 :. Nil) :. N (S 2 :. Nil) :. Nil) :. Nil
 
--- nested1 = [1, 2, [1, 2], [2]]
-nested1 = 1 :. 2 :. (1 :. 2 :. Nil ::. 2 :. Nil)
+-- -- nested1 = [1, 2, [1, 2], [2]]
+-- nested1 = S 1 :. S 2 :. N (S 1 :. S 2 :. Nil) :. N (S 2 :. Nil) :. Nil
 
--- nested2 = [[1]]
-nested2 = 1 :. Nil ::. Nil
+-- -- nested2 = [[1]]
+-- nested2 = N (S 1 :. Nil) :. Nil
 
--- nested3 = [[]]
-nested3 = Nil ::. Nil
+-- -- nested3 = [[]]
+-- nested3 = N Nil :. Nil
 
--- simple0 = [1, 2]
-simple0 = 1 :. 2 :. Nil
+-- -- simple0 = [1, 2]
+-- simple0 = S 1 :. S 2 :. Nil
 
--- simple1 = [1]
-simple1 = 1 :. Nil
+-- -- simple1 = [1]
+-- simple1 = S 1 :. Nil
 
--- nil = []
-nil = Nil
+-- -- nil = []
+-- nil = Nil
 
 main :: IO ()
 main = undefined
