@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+
 -- |
 -- Module      :  Main
 -- Description :  Day 14; ?
@@ -17,11 +18,20 @@ module Main
   )
 where
 
+import Control.Applicative (optional)
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    parseOnly,
+    sepBy1',
+    skipSpace,
+    string,
+  )
 import qualified Data.ByteString.Char8 as BS
+import Data.List (foldl')
 import qualified Data.Set as S
-import Control.Applicative
-import Data.List
 
 type Ix = (Int, Int)
 
@@ -38,8 +48,8 @@ addRockLine f t c = foldl' (flip S.insert) c $ line f t
 
 addRock :: [Ix] -> Cave -> Cave
 addRock [] c = c
-addRock (_:[]) c = c
-addRock (x:y:xs) c = let c' = addRockLine x y c in addRock (y:xs) c'
+addRock [_] c = c
+addRock (x : y : xs) c = let c' = addRockLine x y c in addRock (y : xs) c'
 
 addRocks :: [Rock] -> Cave
 addRocks = foldl' (flip addRock) S.empty
@@ -51,7 +61,7 @@ pIx2 = do
   x <- decimal
   _ <- char ','
   y <- decimal
-  pure $ (x, y)
+  pure (x, y)
 
 pRock :: Parser Rock
 pRock = pIx2 `sepBy1'` string " -> "
@@ -88,8 +98,8 @@ pour ::
   Cave ->
   Cave
 pour m c = case next (500, 0) m c of
-          Nothing -> c
-          (Just p) -> pour m $ p `S.insert` c
+  Nothing -> c
+  (Just p) -> pour m $ p `S.insert` c
 
 -- Part 2.
 
@@ -112,8 +122,8 @@ pour2 ::
   Cave ->
   Cave
 pour2 m c = case next2 (500, -1) m c of
-          Nothing -> c
-          (Just p) -> pour2 m $ p `S.insert` c
+  Nothing -> c
+  (Just p) -> pour2 m $ p `S.insert` c
 
 main :: IO ()
 main = do
