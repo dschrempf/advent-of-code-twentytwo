@@ -68,6 +68,8 @@ dleft (x, y) = (pred x, succ y)
 dright :: Ix -> Ix
 dright (x, y) = (succ x, succ y)
 
+-- Part 1.
+
 next :: Ix -> Int -> Cave -> Maybe Ix
 next p m c
   | snd p > m = Nothing
@@ -88,6 +90,8 @@ pour ::
 pour m c = case next (500, 0) m c of
           Nothing -> c
           (Just p) -> pour m $ p `S.insert` c
+
+-- Part 2.
 
 next2 :: Ix -> Int -> Cave -> Maybe Ix
 next2 p m c
