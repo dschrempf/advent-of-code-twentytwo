@@ -10,3 +10,5 @@ If you ask me, the solutions of [Sheinxy](https://github.com/Sheinxy/Advent2022)
 miss the ones posted by [Monday Morning Haskell](https://github.com/MondayMorningHaskell/AdventOfCode/tree/aoc-2022/src), although they do have some
 boilerplate.
 
+And I found [another one](https://github.com/glguy/advent) that is great!
+
