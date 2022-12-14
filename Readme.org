@@ -11,3 +11,7 @@ miss the ones posted by [[https://github.com/MondayMorningHaskell/AdventOfCode/t
 boilerplate.
 
 And I found [[https://github.com/glguy/advent][another one]] that is great!
+
+Also, have a look at the [[https://www.reddit.com/r/haskell/comments/z9mjcz/advent_of_code_2022_day_1/][Advent of Code on r/haskell]].
+
+And finally I found a nice [[https://github.com/samcoy3/advent-of-code-template][Haskell template]].

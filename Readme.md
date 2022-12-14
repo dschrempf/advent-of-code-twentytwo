@@ -12,3 +12,7 @@ boilerplate.
 
 And I found [another one](https://github.com/glguy/advent) that is great!
 
+Also, have a look at the [Advent of Code on r/haskell](https://www.reddit.com/r/haskell/comments/z9mjcz/advent_of_code_2022_day_1/).
+
+And finally I found a nice [Haskell template](https://github.com/samcoy3/advent-of-code-template).
+
