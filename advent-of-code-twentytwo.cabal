@@ -255,7 +255,11 @@ executable day15
   other-modules:
   autogen-modules:
   ghc-options:
-  build-depends:   base >=4.7 && <5
+  build-depends:
+    , attoparsec
+    , base        >=4.7 && <5
+    , bytestring
+    , containers
 
 executable day16
   import:          common, exec
