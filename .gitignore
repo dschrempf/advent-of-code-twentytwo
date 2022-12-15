@@ -1,4 +1,5 @@
 /.direnv/
+/inputs/*
 
 dist
 dist-*

@@ -83,32 +83,25 @@ canBeBeacon ss bs i
     inRangeM = M.mapWithKey inRangeP ss
     anyInRange = or $ M.elems inRangeM
 
-countNonBeacons :: Sz -> Sensors -> Beacons -> Int -> Int
-countNonBeacons (mi, ma) ss bs r = length $ filter (== False) [canBeBeacon ss bs (x, r) | x <- [mi .. ma]]
+rowOfInterest :: Int
+-- rowOfInterest = 10
+rowOfInterest = 2000000
+
+countNonBeacons :: Sz -> Sensors -> Beacons -> Int
+countNonBeacons (mi, ma) ss bs =
+  length $
+    filter
+      (== False)
+      [canBeBeacon ss bs (x, rowOfInterest) | x <- [mi .. ma]]
 
 -- Part 2.
 
 fieldLen :: Int
-fieldLen = 4000000
-
 -- fieldLen = 20
+fieldLen = 4000000
 
 tune :: Ix -> Int
 tune (x, y) = x * 4000000 + y
-
--- findBeacon :: Sensors -> Beacons -> Maybe Ix
--- findBeacon ss bs =
---   listToMaybe
---     [ i
---       | i <- frame 0,
---         canBeBeacon ss bs i
---     ]
-
--- frame :: Int -> [Ix]
--- frame n = [(x, f) | x <- [f .. t]] ++ [(x, t) | x <- [f .. t]]
---   where
---     f = n
---     t = fieldLen - n
 
 rhombus :: Int -> [(Int, Int)]
 rhombus d =
@@ -127,7 +120,10 @@ rhombus d =
     fb f (x, y) = (f x, f y)
 
 perimeter :: Ix -> Int -> [Ix]
-perimeter (x, y) d = [(x + dx, y + dy) | (dx, dy) <- rhombus $ succ d]
+perimeter (x, y) d =
+  [ (x + dx, y + dy)
+    | (dx, dy) <- rhombus $ succ d
+  ]
 
 inRange :: Int -> Bool
 inRange x = x >= 0 && x <= fieldLen
@@ -159,8 +155,8 @@ main = do
       sz = size ss
   -- Part 1.
   print sz
-  print $ countNonBeacons sz ss bs 2000000
+  print $ countNonBeacons sz ss bs
   -- Part 2.
-  print sz
-  -- print $ findBeacon ss
-  print $ tune (2721114, 3367718)
+  let b = findBeacon ss
+  print b
+  print $ tune <$> b
