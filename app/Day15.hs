@@ -129,8 +129,7 @@ inRange :: Int -> Bool
 inRange x = x >= 0 && x <= fieldLen
 
 distressBeacon :: Sensors -> Ix -> Bool
-distressBeacon ss i
-  | otherwise = not anyInRange
+distressBeacon ss i = not anyInRange
   where
     inRangeP s d = manhattan s i <= d
     inRangeM = M.mapWithKey inRangeP ss
