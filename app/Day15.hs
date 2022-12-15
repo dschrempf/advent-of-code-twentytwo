@@ -89,17 +89,12 @@ countNonBeacons (mi, ma) ss bs r = length $ filter (== False) [canBeBeacon ss bs
 -- Part 2.
 
 fieldLen :: Int
--- fieldLen = 4000000
-fieldLen = 20
+fieldLen = 4000000
 
--- tune :: Ix -> Int
--- tune (x, y) = x * 4000000 + y
+-- fieldLen = 20
 
--- frame :: Int -> [Ix]
--- frame n = [(x, f) | x <- [f .. t]] ++ [(x, t) | x <- [f .. t]]
---   where
---     f = n
---     t = fieldLen - n
+tune :: Ix -> Int
+tune (x, y) = x * 4000000 + y
 
 -- findBeacon :: Sensors -> Beacons -> Maybe Ix
 -- findBeacon ss bs =
@@ -109,33 +104,63 @@ fieldLen = 20
 --         canBeBeacon ss bs i
 --     ]
 
-distressBeacon :: Sensors -> Beacons -> Ix -> Bool
-distressBeacon ss bs i
-  | i `S.member` bs = False
+-- frame :: Int -> [Ix]
+-- frame n = [(x, f) | x <- [f .. t]] ++ [(x, t) | x <- [f .. t]]
+--   where
+--     f = n
+--     t = fieldLen - n
+
+rhombus :: Int -> [(Int, Int)]
+rhombus d =
+  (0, d)
+    : (0, -d)
+    : (d, 0)
+    : (-d, 0)
+    : xs
+    ++ map (f2 negate) xs
+    ++ map (fb negate) xs
+    ++ map (f1 negate) xs
+  where
+    xs = zip [1 .. d - 1] $ reverse [1 .. d - 1]
+    f1 f (x, y) = (f x, y)
+    f2 f (x, y) = (x, f y)
+    fb f (x, y) = (f x, f y)
+
+perimeter :: Ix -> Int -> [Ix]
+perimeter (x, y) d = [(x + dx, y + dy) | (dx, dy) <- rhombus $ succ d]
+
+inRange :: Int -> Bool
+inRange x = x >= 0 && x <= fieldLen
+
+distressBeacon :: Sensors -> Ix -> Bool
+distressBeacon ss i
   | otherwise = not anyInRange
   where
     inRangeP s d = manhattan s i <= d
     inRangeM = M.mapWithKey inRangeP ss
     anyInRange = or $ M.elems inRangeM
 
-findBeacon :: Sensors -> Beacons -> Maybe Ix
-findBeacon ss bs =
+findBeacon :: Sensors -> Maybe Ix
+findBeacon ss =
   listToMaybe
     [ (x, y)
-      | x <- [0 .. fieldLen],
-        y <- [0 .. fieldLen],
-        distressBeacon ss bs (x, y)
+      | (s, d) <- M.toList ss,
+        (x, y) <- perimeter s d,
+        inRange x,
+        inRange y,
+        distressBeacon ss (x, y)
     ]
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input15-sample.txt"
+  d <- BS.readFile "inputs/input15.txt"
   let xs = either error id $ parseOnly pInput d
       (ss, bs) = hInput xs
       sz = size ss
-  -- -- Part 1.
-  -- print sz
-  -- print $ countNonBeacons sz ss bs 2000000
+  -- Part 1.
+  print sz
+  print $ countNonBeacons sz ss bs 2000000
   -- Part 2.
   print sz
-  print $ findBeacon ss bs
+  -- print $ findBeacon ss
+  print $ tune (2721114, 3367718)
