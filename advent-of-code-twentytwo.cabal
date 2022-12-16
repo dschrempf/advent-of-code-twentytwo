@@ -274,7 +274,6 @@ executable day16
     , base           >=4.7 && <5
     , bytestring
     , containers
-    , partial-order
     , pretty-simple
 
 executable day17
