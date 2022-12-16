@@ -18,12 +18,21 @@ module Main
   )
 where
 
-import Control.Applicative
+import Control.Applicative (optional)
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+    signed,
+    string,
+  )
 import qualified Data.ByteString.Char8 as BS
-import Data.Foldable
+import Data.Foldable (Foldable (foldl'))
 import qualified Data.Map.Strict as M
-import Data.Maybe
+import Data.Maybe (listToMaybe)
 import qualified Data.Set as S
 
 -- Position index (x, y).

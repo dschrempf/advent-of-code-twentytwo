@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 -- |
 -- Module      :  Aoc.List
 -- Description :  Tools for lists
@@ -11,6 +13,7 @@
 -- Creation date: Sat Dec 10 15:15:27 2022.
 module Aoc.List
   ( chop,
+    pairs,
   )
 where
 
@@ -22,3 +25,8 @@ chop _ [] = []
 chop n xs = ys : chop n zs
   where
     (ys, zs) = splitAt n xs
+
+-- | Get all unordered pairs.
+pairs :: [a] -> [(a, a)]
+pairs [] = []
+pairs (x : xs) = map (x,) xs ++ pairs xs
