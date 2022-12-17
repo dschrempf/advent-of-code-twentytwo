@@ -107,11 +107,11 @@ backwards m os = snd . foldl' f (0, 0)
       where
         m' = m + (m - n) + 1 - nskipped
 
+-- Map from current valve to list of equivalent paths.
 type Map = M.Map Valve [Path]
 
 data Trace = Trace
   { _minute :: Int,
-    -- Map from current valve to list of equivalent paths.
     _paths :: Map
   }
   deriving (Show, Eq, Generic)
@@ -122,15 +122,18 @@ instance NFData Trace
 releaseAt :: Int -> Valve -> Int
 releaseAt m x = flowRate x * (30 - m)
 
--- Assume that valve has not been opened yet.
+-- Assume the valve has not been opened yet. Also reset previously visited paths
+-- to enable movement in backward direction.
 open :: Int -> Path -> Path
-open m (Path xs ss c _ r) = Path (S.insert c xs) ((m, c) : ss) c (S.singleton c) (r + releaseAt m c)
+open m (Path xs ss c _ r) =
+  Path (S.insert c xs) ((m, c) : ss) c (S.singleton c) (r + releaseAt m c)
 
 move :: Valves -> Path -> [Path]
 move vs (Path xs ss c p r) =
   [ Path xs ss c' p' r
     | t <- tunnels c,
       let c' = fromJust $ find ((== t) . name) vs,
+      -- Only move to valves not visited since the last valve was opened.
       c' `S.notMember` p,
       let p' = S.insert c' p
   ]
@@ -139,7 +142,7 @@ openOrMove :: Int -> Valves -> Path -> [Path]
 openOrMove m vs x@(Path xs _ c _ _)
   -- Do not open valves without flow rate.
   | flowRate c == 0 = move vs x
-  -- Do not open valve if already open.
+  -- Do not open valves already open.
   | c `S.member` xs = move vs x
   | otherwise = open m x : move vs x
 
@@ -149,7 +152,9 @@ sortIntoMap m = foldl' insertBetter M.empty
     insertBetter mp x = M.alter (Just . findBetter x) (current x) mp
     findBetter x Nothing = [x]
     findBetter x (Just ys)
+      -- If the new path is better than all others, use it exclusively.
       | all (== GT) cs = [x]
+      -- If the new path is better than some others, use the best paths.
       | GT `elem` cs = x : catMaybes (zipWith p cs ys)
       | otherwise = ys
       where
@@ -170,6 +175,5 @@ main = do
       x0 = fromJust $ find ((== "AA") . name) xs
       s0 = Path S.empty [] x0 (S.singleton x0) 0
       t0 = Trace 1 $ M.singleton x0 [s0]
-      -- First move.
       (Trace _ m) = nTimes 30 (next vs) t0
   pTraceShowM $ maximum $ map released $ concat $ M.elems m
