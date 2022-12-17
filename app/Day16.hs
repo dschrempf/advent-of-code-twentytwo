@@ -68,7 +68,7 @@ pInput = pValve `sepBy1` endOfLine <* optional endOfLine <* endOfInput <?> "inpu
 
 -- Part 1.
 
-data State = State
+data Path = Path
   { opened :: Valves,
     sequence :: [(Int, Valve)],
     current :: Valve,
@@ -77,20 +77,27 @@ data State = State
   }
   deriving (Show, Eq, Generic)
 
-instance NFData State
+instance NFData Path
 
 -- Actually a partial order, but we avoid testing non-compareable elements. If
--- we do so by accident, however, we fail.
-compareStates :: Int -> State -> State -> Ordering
-compareStates m x y
-  | current x /= current y = error "bug: current valves differ"
+-- we do so by accident, we fail.
+comparePaths :: Int -> Path -> Path -> Ordering
+comparePaths m x y
+  | current x /= current y = error "comparePaths: bug: current valves differ"
   | otherwise = compare (released x + yb) (released y + xb)
   where
     xb = backwards m (opened y) $ sequence x
     yb = backwards m (opened x) $ sequence y
 
 -- Calculate released pressure walking the path backwards.
-backwards :: Int -> Valves -> [(Int, Valve)] -> Int
+backwards ::
+  -- Current minute.
+  Int ->
+  -- Opened valves.
+  Valves ->
+  -- Sequence of other path.
+  [(Int, Valve)] ->
+  Int
 backwards m os = snd . foldl' f (0, 0)
   where
     f (nskipped, tot) (n, x)
@@ -100,12 +107,12 @@ backwards m os = snd . foldl' f (0, 0)
       where
         m' = m + (m - n) + 1 - nskipped
 
-type Map = M.Map Valve [State]
+type Map = M.Map Valve [Path]
 
 data Trace = Trace
   { _minute :: Int,
-    -- Map from current valve to set of attained states.
-    _states :: Map
+    -- Map from current valve to list of equivalent paths.
+    _paths :: Map
   }
   deriving (Show, Eq, Generic)
 
@@ -116,27 +123,27 @@ releaseAt :: Int -> Valve -> Int
 releaseAt m x = flowRate x * (30 - m)
 
 -- Assume that valve has not been opened yet.
-open :: Int -> State -> State
-open m (State xs ss c _ r) = State (S.insert c xs) ((m, c) : ss) c (S.singleton c) (r + releaseAt m c)
+open :: Int -> Path -> Path
+open m (Path xs ss c _ r) = Path (S.insert c xs) ((m, c) : ss) c (S.singleton c) (r + releaseAt m c)
 
-move :: Valves -> State -> [State]
-move vs (State xs ss c p r) =
-  [ State xs ss c' p' r
+move :: Valves -> Path -> [Path]
+move vs (Path xs ss c p r) =
+  [ Path xs ss c' p' r
     | t <- tunnels c,
       let c' = fromJust $ find ((== t) . name) vs,
       c' `S.notMember` p,
       let p' = S.insert c' p
   ]
 
-openOrMove :: Int -> Valves -> State -> [State]
-openOrMove m vs x@(State xs _ c _ _)
+openOrMove :: Int -> Valves -> Path -> [Path]
+openOrMove m vs x@(Path xs _ c _ _)
   -- Do not open valves without flow rate.
   | flowRate c == 0 = move vs x
   -- Do not open valve if already open.
   | c `S.member` xs = move vs x
   | otherwise = open m x : move vs x
 
-sortIntoMap :: Int -> [State] -> Map
+sortIntoMap :: Int -> [Path] -> Map
 sortIntoMap m = foldl' insertBetter M.empty
   where
     insertBetter mp x = M.alter (Just . findBetter x) (current x) mp
@@ -146,7 +153,7 @@ sortIntoMap m = foldl' insertBetter M.empty
       | GT `elem` cs = x : catMaybes (zipWith p cs ys)
       | otherwise = ys
       where
-        cs = map (compareStates m x) ys
+        cs = map (comparePaths m x) ys
     p GT _ = Nothing
     p _ y = Just y
 
@@ -161,7 +168,7 @@ main = do
   let xs = either error id $ parseOnly pInput d
       vs = S.fromList xs
       x0 = fromJust $ find ((== "AA") . name) xs
-      s0 = State S.empty [] x0 (S.singleton x0) 0
+      s0 = Path S.empty [] x0 (S.singleton x0) 0
       t0 = Trace 1 $ M.singleton x0 [s0]
       -- First move.
       (Trace _ m) = nTimes 30 (next vs) t0
