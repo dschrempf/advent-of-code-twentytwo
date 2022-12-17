@@ -277,7 +277,6 @@ executable day16
     , bytestring
     , containers
     , deepseq
-    , partial-order
     , pretty-simple
 
 executable day17

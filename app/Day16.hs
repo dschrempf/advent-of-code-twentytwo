@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -20,6 +21,7 @@ where
 
 import Aoc.Function
 import Control.Applicative
+import Control.DeepSeq
 import Control.Monad hiding (sequence)
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
@@ -28,6 +30,7 @@ import qualified Data.Map.Strict as M
 import Data.Maybe
 import qualified Data.Set as S
 import Debug.Pretty.Simple
+import GHC.Generics
 import Prelude hiding (sequence)
 
 data Valve = Valve
@@ -35,7 +38,9 @@ data Valve = Valve
     flowRate :: Int,
     tunnels :: [String]
   }
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance NFData Valve
 
 pValveName :: Parser String
 pValveName = count 2 letter_ascii <?> "vname"
@@ -67,9 +72,12 @@ data State = State
   { opened :: Valves,
     sequence :: [(Int, Valve)],
     current :: Valve,
+    prev :: S.Set Valve,
     released :: Int
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance NFData State
 
 -- Actually a partial order, but we avoid testing non-compareable elements. If
 -- we do so by accident, however, we fail.
@@ -92,12 +100,16 @@ backwards m os = snd . foldl' f (0, 0)
       where
         m' = m + (m - n) + 1 - nskipped
 
+type Map = M.Map Valve [State]
+
 data Trace = Trace
   { _minute :: Int,
     -- Map from current valve to set of attained states.
-    _traces :: M.Map Valve State
+    _states :: Map
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance NFData Trace
 
 -- Total released pressure over the remaining time.
 releaseAt :: Int -> Valve -> Int
@@ -105,31 +117,34 @@ releaseAt m x = flowRate x * (30 - m)
 
 -- Assume that valve has not been opened yet.
 open :: Int -> State -> State
-open m (State xs ss c r) = State (S.insert c xs) ((m, c) : ss) c (r + releaseAt m c)
+open m (State xs ss c _ r) = State (S.insert c xs) ((m, c) : ss) c (S.singleton c) (r + releaseAt m c)
 
 move :: Valves -> State -> [State]
-move vs (State xs ss c r) =
-  [ State xs ss c' r
+move vs (State xs ss c p r) =
+  [ State xs ss c' p' r
     | t <- tunnels c,
-      let c' = fromJust $ find ((== t) . name) vs
+      let c' = fromJust $ find ((== t) . name) vs,
+      c' `S.notMember` p,
+      let p' = S.insert c' p
   ]
 
 openOrMove :: Int -> Valves -> State -> [State]
-openOrMove m vs x@(State xs _ c _)
+openOrMove m vs x@(State xs _ c _ _)
   -- Do not open valves without flow rate.
   | flowRate c == 0 = move vs x
   -- Do not open valve if already open.
   | c `S.member` xs = move vs x
   | otherwise = open m x : move vs x
 
-sortIntoMap :: Int -> [State] -> M.Map Valve State
+sortIntoMap :: Int -> [State] -> Map
 sortIntoMap m = foldl' insertBetter M.empty
   where
     insertBetter mp x = M.alter (findBetter x) (current x) mp
-    findBetter x Nothing = Just x
-    findBetter x (Just y) = Just $ case compareStates m x y of
+    findBetter x Nothing = Just [x]
+    findBetter x (Just ys) = Just $ case compareStates m x y of
       LT -> y
-      _ -> x
+      EQ -> y
+      GT -> x
 
 next :: Valves -> Trace -> Trace
 next vs (Trace m xs) = case compare m 30 of
@@ -138,14 +153,12 @@ next vs (Trace m xs) = case compare m 30 of
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input16-sample.txt"
+  d <- BS.readFile "inputs/input16.txt"
   let xs = either error id $ parseOnly pInput d
       vs = S.fromList xs
-      x0 = head xs
-      s0 = State S.empty [] x0 0
+      x0 = fromJust $ find ((== "AA") . name) xs
+      s0 = State S.empty [] x0 (S.singleton x0) 0
       t0 = Trace 1 $ M.singleton x0 s0
       -- First move.
       (Trace _ m) = nTimes 30 (next vs) t0
   pTraceShowM $ maximum $ map released $ M.elems m
-  let f x y = compare (released x) (released y)
-  pTraceShowM $ maximumBy f $ M.elems m
