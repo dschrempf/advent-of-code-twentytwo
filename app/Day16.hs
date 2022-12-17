@@ -139,26 +139,30 @@ openOrMove m vs x@(State xs _ c _ _)
 sortIntoMap :: Int -> [State] -> Map
 sortIntoMap m = foldl' insertBetter M.empty
   where
-    insertBetter mp x = M.alter (findBetter x) (current x) mp
-    findBetter x Nothing = Just [x]
-    findBetter x (Just ys) = Just $ case compareStates m x y of
-      LT -> y
-      EQ -> y
-      GT -> x
+    insertBetter mp x = M.alter (Just . findBetter x) (current x) mp
+    findBetter x Nothing = [x]
+    findBetter x (Just ys)
+      | all (== GT) cs = [x]
+      | GT `elem` cs = x : catMaybes (zipWith p cs ys)
+      | otherwise = ys
+      where
+        cs = map (compareStates m x) ys
+    p GT _ = Nothing
+    p _ y = Just y
 
 next :: Valves -> Trace -> Trace
 next vs (Trace m xs) = case compare m 30 of
   GT -> error "next: out of minutes"
-  _ -> Trace (succ m) $ sortIntoMap m $ concatMap (openOrMove m vs) $ M.elems xs
+  _ -> Trace (succ m) $ sortIntoMap m $ concatMap (openOrMove m vs) $ concat $ M.elems xs
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input16.txt"
+  d <- BS.readFile "inputs/input16-sample.txt"
   let xs = either error id $ parseOnly pInput d
       vs = S.fromList xs
       x0 = fromJust $ find ((== "AA") . name) xs
       s0 = State S.empty [] x0 (S.singleton x0) 0
-      t0 = Trace 1 $ M.singleton x0 s0
+      t0 = Trace 1 $ M.singleton x0 [s0]
       -- First move.
       (Trace _ m) = nTimes 30 (next vs) t0
-  pTraceShowM $ maximum $ map released $ M.elems m
+  pTraceShowM $ maximum $ map released $ concat $ M.elems m
