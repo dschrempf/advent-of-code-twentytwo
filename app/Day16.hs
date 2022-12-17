@@ -116,6 +116,8 @@ move vs (State xs ss c r) =
 
 openOrMove :: Int -> Valves -> State -> [State]
 openOrMove m vs x@(State xs _ c _)
+  -- Do not open valves without flow rate.
+  | flowRate c == 0 = move vs x
   -- Do not open valve if already open.
   | c `S.member` xs = move vs x
   | otherwise = open m x : move vs x

@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 -- |
@@ -20,6 +21,7 @@ where
 
 import Aoc.Function (nTimes)
 import Control.Applicative (Alternative ((<|>)), optional)
+import Control.DeepSeq
 import Data.Attoparsec.ByteString.Char8
   ( Parser,
     char,
@@ -32,6 +34,7 @@ import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.HashSet as HS
 import Data.List (foldl', scanl')
+import GHC.Generics
 
 -- Part 1.
 
@@ -62,7 +65,9 @@ data State = State
   { positions :: [Position],
     visited :: HS.HashSet Position
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance NFData State
 
 -- Follow in one dimension.
 followI :: Int -> Int -> Int

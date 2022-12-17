@@ -14,9 +14,11 @@ module Aoc.Function
   )
 where
 
+import Control.DeepSeq
+
 -- Apply a function @n@ times.
-nTimes :: Int -> (a -> a) -> a -> a
+nTimes :: NFData a => Int -> (a -> a) -> a -> a
 nTimes n f x = case compare n 1 of
   LT -> error $ "nTimes: n zero or negative: " ++ show n
-  EQ -> f x
-  GT -> nTimes (n - 1) f $ f x
+  EQ -> force $ f x
+  GT -> nTimes (n - 1) f $ force $ f x

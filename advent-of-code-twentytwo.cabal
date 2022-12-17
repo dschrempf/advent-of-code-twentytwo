@@ -65,6 +65,7 @@ library
   build-depends:
     , base        >=4.7 && <5
     , containers
+    , deepseq
     , massiv
 
 executable day01
@@ -177,6 +178,7 @@ executable day09
     , attoparsec
     , base                  >=4.7 && <5
     , bytestring
+    , deepseq
     , unordered-containers
 
 executable day10
@@ -274,6 +276,8 @@ executable day16
     , base           >=4.7 && <5
     , bytestring
     , containers
+    , deepseq
+    , partial-order
     , pretty-simple
 
 executable day17
