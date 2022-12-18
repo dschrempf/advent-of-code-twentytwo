@@ -1,3 +1,5 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 -- |
 -- Module      :  Main
 -- Description :  Day 17; ?
@@ -16,13 +18,18 @@ module Main
   )
 where
 
+import Aoc.List
 import Control.Applicative
+import Control.DeepSeq
 import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as S
+import GHC.Generics
 
 data Jet = L | R
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance NFData Jet
 
 pJet :: Parser Jet
 pJet = (L <$ char '<') <|> (R <$ char '>')
@@ -88,27 +95,76 @@ blow R r = shiftR (1, 0) r
 rest :: Field -> Rock -> Field
 rest f = S.union f . S.fromList
 
-fall :: Rock -> Rock
-fall = shiftR (0, -1)
+fallOne :: Rock -> Rock
+fallOne = shiftR (0, -1)
 
 blowAndFall :: Field -> [Jet] -> Rock -> (Field, [Jet])
 blowAndFall f (j : js) r0 =
   let r1 = blow j r0
       r2 = if collided f r1 then r0 else r1
-      r3 = fall r2
+      r3 = fallOne r2
    in if collided f r3
-        then (rest f r2, js)
+        then (cleanField $ rest f r2, js)
         else blowAndFall f js r3
 blowAndFall _ [] _ = error "fall: no jet"
 
-fallAll :: Field -> [Jet] -> [Rock] -> [Field]
-fallAll f js (r : rs) = let (f', js') = blowAndFall f js (position f r) in f' : fallAll f' js' rs
-fallAll _ _ [] = error "newRock: no rock"
+-- Only keep important fields.
+cleanField :: Field -> Field
+cleanField xs = S.filter (\(_, y) -> y >= minY) xs
+  where
+    maxI i = maximum $ S.map snd $ S.filter ((== i) . fst) xs
+    maxima = map maxI [0 .. 6]
+    minY = minimum maxima - 100
+
+fall :: ([Jet], [Rock], Field) -> ([Jet], [Rock], Field)
+fall (js, r : rs, f) =
+  let (f', js') = blowAndFall f js (position f r)
+   in (js', rs, force f')
+fall (_, [], _) = error "newRock: no rock"
+
+ix :: Int
+ix = 1000000000000
+
+nTimes :: [Jet] -> [Rock] -> Int -> Field -> Field
+nTimes js rs n f
+  | n <= 0 = f
+  | otherwise =
+      let (js', rs', f') = fall (js, rs, f)
+       in deepseq f' $ nTimes js' rs' (n - 1) f'
+
+maxLength :: Int
+maxLength = 10000
+
+shift :: Int
+shift = 10000
+
+findCycle :: [Int] -> (Int, [Int])
+findCycle = go 1 . drop shift
+  where
+    m = 4
+    go :: Int -> [Int] -> (Int, [Int])
+    go n xs
+      | n <= maxLength =
+          let h = take n xs
+              xss = chop n $ take (m * n) xs
+           in if all (== h) xss then (n, h) else go (n + 1) xs
+      | otherwise = error "findCycle: none found"
 
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input17.txt"
-  let js = cycle $ either error id $ parseOnly pInput d
+  -- Part 1.
+  let jj = either error id $ parseOnly pInput d
+      js = cycle jj
       rs = cycle rocks
-      fs = fallAll field0 js rs
-  print $ findYMax $ fs !! 2021
+      f0 = (js, rs, field0)
+      fm (_, _, f) = findYMax f
+  print $ findYMax $ nTimes js rs 2022 field0
+  -- Part 2.
+  let hs = map fm $ iterate fall f0
+      ds = zipWith (-) (tail hs) hs
+      (cycleLength, cycles) = findCycle ds
+  let beginning = sum $ take shift ds
+      nLeft = ix - shift
+      (ns, r) = nLeft `divMod` cycleLength
+  print $ beginning + ns * sum cycles + sum (take r cycles)

@@ -18,7 +18,7 @@ module Main
   )
 where
 
-import Aoc.Function (nTimes)
+import Aoc.Function (nTimesStrict)
 import Control.Applicative (Alternative ((<|>)))
 import Data.Attoparsec.ByteString.Char8
   ( Parser,
@@ -52,7 +52,7 @@ data Move = Move
 pCrate :: Parser (Maybe Crate)
 pCrate =
   Just <$> (char '[' *> anyChar <* char ']')
-    <|> string "   " $> Nothing
+    Control.Applicative.<|> string "   " $> Nothing
 
 pCrateLine :: Parser [Maybe Crate]
 pCrateLine = pCrate `sepBy1'` char ' '
@@ -108,7 +108,7 @@ move :: Int -> Int -> [Stack] -> [Stack]
 move f t xs = let (c, xs') = pop f xs in push t c xs'
 
 moveN :: [Stack] -> Move -> [Stack]
-moveN xs (Move n f t) = nTimes n (move f t) xs
+moveN xs (Move n f t) = nTimesStrict n (move f t) xs
 
 moveAll :: [Stack] -> [Move] -> [Stack]
 moveAll = foldl' moveN

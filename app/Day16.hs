@@ -275,13 +275,11 @@ main = do
       x0 = fromJust $ find ((== "AA") . name) xs
       p0 = Path S.empty [] x0 (S.singleton x0) 0
       t0 = Trace 1 $ M.singleton x0 [p0]
-      (Trace _ m) = nTimes 30 (next 30 vs) t0
+      (Trace _ m) = nTimesStrict 30 (next 30 vs) t0
   pTraceShowM $ maximum $ map released $ concat $ M.elems m
   -- Part 2.
   let p20 = Path2 p0 p0
       t20 = Trace2 1 $ M.singleton (x0, x0) [p20]
-      (Trace2 _ m2) = nTimes 26 (next2 26 vs) t20
+      (Trace2 _ m2) = nTimesStrict 26 (next2 26 vs) t20
       ys = concat $ M.elems m2
   pTraceShowM $ maximum $ map (\(Path2 a b) -> released a + released b) ys
-
--- pTraceShowM $ maximumBy (\(Path2 a b) (Path2 c d) -> compare (released a + released b) (released c + released d)) ys

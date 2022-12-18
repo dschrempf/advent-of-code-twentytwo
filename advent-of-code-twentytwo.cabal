@@ -287,10 +287,12 @@ executable day17
   autogen-modules:
   ghc-options:
   build-depends:
+    , aoc
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
     , containers
+    , deepseq
 
 executable day18
   import:          common, exec

@@ -19,7 +19,7 @@ module Main
   )
 where
 
-import Aoc.Function (nTimes)
+import Aoc.Function (nTimesStrict)
 import Control.Applicative (Alternative ((<|>)), optional)
 import Control.DeepSeq
 import Data.Attoparsec.ByteString.Char8
@@ -109,7 +109,7 @@ move m (State xs v) = State xs' v'
     v' = HS.insert (last xs') v
 
 moveN :: State -> MoveN -> State
-moveN s (MoveN m n) = nTimes n (move m) s
+moveN s (MoveN m n) = nTimesStrict n (move m) s
 
 -- Part 2.
 
