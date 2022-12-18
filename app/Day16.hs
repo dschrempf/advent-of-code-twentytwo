@@ -187,8 +187,8 @@ comparePaths2 :: Int -> Int -> Path2 -> Path2 -> Ordering
 comparePaths2 mnow mmax (Path2 x1 x2) (Path2 y1 y2)
   | current x1 /= current y1 = error "comparePath2: bug: current valves of path 1 differ"
   | current x2 /= current y2 = error "comparePath2: bug: current valves of path 2 differ"
-  | opened y1 `S.isSubsetOf` opened x1 && (released y1 + released y2 > released x1 + released x2) = LT
-  | opened x1 `S.isSubsetOf` opened y1 && (released x1 + released x2 > released y1 + released y2) = GT
+  | opened x1 `S.isSubsetOf` opened y1 && (released x1 + released x2 >= released y1 + released y2) = GT
+  | opened y1 `S.isSubsetOf` opened x1 && (released y1 + released y2 >= released x1 + released x2) = LT
   | otherwise = case (comparePaths mnow mmax x1 y1, comparePaths mnow mmax x2 y2) of
       (GT, GT) -> GT
       (LT, LT) -> LT
@@ -212,7 +212,8 @@ instance NFData Trace2
 
 openOrMove2 :: Int -> Int -> Valves -> Path2 -> [Path2]
 openOrMove2 mnow mmax vs p@(Path2 x y)
-  | null ps2' = [p]
+  -- Wait if all valves are open.
+  | vsWithFlow == opened x = [p]
   | otherwise = ps2'
   where
     xs = openOrMove mnow mmax vs x
@@ -230,6 +231,8 @@ openOrMove2 mnow mmax vs p@(Path2 x y)
           let a'' = a' {opened = os},
           let b'' = b' {opened = os}
       ]
+    vsNoFlow = S.filter ((==) 0 . flowRate) vs
+    vsWithFlow = vs `S.difference` vsNoFlow
 
 lastOpened :: Path -> Path -> Maybe Valve
 lastOpened x y
