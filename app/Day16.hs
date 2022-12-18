@@ -3,7 +3,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Day 16; ?
+-- Description :  Day 16; Proboscidea Volcanium
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

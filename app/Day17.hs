@@ -16,5 +16,23 @@ module Main
   )
 where
 
+import Control.Applicative
+import Data.Attoparsec.ByteString.Char8
+import qualified Data.ByteString.Char8 as BS
+
+data Jet = L | R
+  deriving (Show, Eq)
+
+pJet :: Parser Jet
+pJet = (L <$ char '<') <|> (R <$ char '>')
+
+type JetPattern = [Jet]
+
+pInput :: Parser JetPattern
+pInput = some pJet <* optional endOfLine <* endOfInput
+
 main :: IO ()
-main = undefined
+main = do
+  d <- BS.readFile "inputs/input17-sample.txt"
+  let jp = either error id $ parseOnly pInput d
+  print jp
