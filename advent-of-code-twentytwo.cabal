@@ -290,6 +290,7 @@ executable day17
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
+    , containers
 
 executable day18
   import:          common, exec

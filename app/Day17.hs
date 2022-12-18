@@ -19,6 +19,7 @@ where
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Set as S
 
 data Jet = L | R
   deriving (Show, Eq)
@@ -58,43 +59,46 @@ shiftR :: (Int, Int) -> Rock -> Rock
 shiftR d = map (shiftP d)
 
 -- Only store the 7 highest positions.
-type Field = [Int]
+type Field = S.Set Position
 
 field0 :: Field
-field0 = replicate 7 0
+field0 = S.fromList $ zip [0 .. 6] $ repeat 0
+
+findYMax :: Field -> Int
+findYMax = maximum . S.map snd
 
 position :: Field -> Rock -> Rock
 position f = shiftR (2, yTarget)
   where
-    yMax = maximum f
+    yMax = findYMax f
     yTarget = yMax + 4
 
-blow :: Jet -> Rock -> Rock
-blow L r | le > 0 = shiftR (-1, 0) r
+collided :: Field -> Rock -> Bool
+collided zs r = collideWithLeftBoundary || collideWithRightBoundary || collideWithField
   where
-    le = minimum $ map fst r
-blow R r | ri < 6 = shiftR (1, 0) r
-  where
-    ri = maximum $ map fst r
-blow _ r = r
+    xs = map fst r
+    collideWithLeftBoundary = minimum xs < 0
+    collideWithRightBoundary = maximum xs > 6
+    collideWithField = any (`S.member` zs) r
 
-collide :: Field -> Rock -> Bool
-collide f = any p
-  where
-    p (rX, rY) = f !! rX >= rY - 1
+blow :: Jet -> Rock -> Rock
+blow L r = shiftR (-1, 0) r
+blow R r = shiftR (1, 0) r
 
 rest :: Field -> Rock -> Field
-rest f [] = f
-rest f ((x, y) : xs)
-  | (f !! x) < y = let f' = take x f ++ [y] ++ drop (x + 1) f in rest f' xs
-  | otherwise = rest f xs
+rest f = S.union f . S.fromList
+
+fall :: Rock -> Rock
+fall = shiftR (0, -1)
 
 blowAndFall :: Field -> [Jet] -> Rock -> (Field, [Jet])
-blowAndFall f (j : js) r =
-  let r' = blow j r
-   in if collide f r'
-        then (rest f r', js)
-        else blowAndFall f js $ shiftR (0, -1) r'
+blowAndFall f (j : js) r0 =
+  let r1 = blow j r0
+      r2 = if collided f r1 then r0 else r1
+      r3 = fall r2
+   in if collided f r3
+        then (rest f r2, js)
+        else blowAndFall f js r3
 blowAndFall _ [] _ = error "fall: no jet"
 
 fallAll :: Field -> [Jet] -> [Rock] -> [Field]
@@ -103,8 +107,8 @@ fallAll _ _ [] = error "newRock: no rock"
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input17-sample.txt"
+  d <- BS.readFile "inputs/input17.txt"
   let js = cycle $ either error id $ parseOnly pInput d
       rs = cycle rocks
       fs = fallAll field0 js rs
-  print $ take 3 fs
+  print $ findYMax $ fs !! 2021
