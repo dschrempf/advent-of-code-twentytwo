@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Main
--- Description :  Day 18; ?
+-- Description :  Day 18; Boiling Boulders
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --

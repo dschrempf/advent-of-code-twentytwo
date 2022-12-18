@@ -2,7 +2,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Day 17; ?
+-- Description :  Day 17; Pyroclastic Flow
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
