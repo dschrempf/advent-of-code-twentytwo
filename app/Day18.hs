@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 -- |
 -- Module      :  Main
 -- Description :  Day 18; Boiling Boulders
@@ -16,13 +18,15 @@ module Main
   )
 where
 
+import Aoc.Array
 import Aoc.List
 import Control.Applicative
+import Control.Monad
 import Control.Monad.ST
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
 import Data.Foldable
-import Data.Massiv.Array as A
+import Data.Massiv.Array as A hiding (forM, forM_)
 import Prelude as P
 
 type Cube = (Int, Int, Int)
@@ -58,26 +62,64 @@ totalSurface xs = n * 6 - nNeighbors xs * 2
 -- Part 2.
 
 data St = Unknown | Out | Dr | In
+  deriving (Eq)
 
 instance Show St where
-  show Unknown = " "
+  show Unknown = "?"
   show Out = " "
   show Dr = "o"
   show In = "."
 
 type Droplet = Array B Ix3 St
 
+type MDroplet s = MArray s B Ix3 St
+
 fillArray :: [Cube] -> Droplet
 fillArray cs = runST $ do
   a <- newMArray sz Unknown
-  traverse_ (\(x, y, z) -> writeM a (x :> y :. z) Dr) cs
+  traverse_ (\(x, y, z) -> writeM a (x + 1 :> y + 1 :. z + 1) Dr) cs
   freezeS a
   where
     (xs, ys, zs) = P.unzip3 cs
-    xm = maximum xs + 1
-    ym = maximum ys + 1
-    zm = maximum zs + 1
+    xm = maximum xs + 3
+    ym = maximum ys + 3
+    zm = maximum zs + 3
     sz = Sz $ xm :> ym :. zm
+
+findOneOutside :: Droplet -> Ix3
+findOneOutside a =
+  head
+    [ ix
+      | i <- [0 .. x - 1],
+        let ix = Ix3 i 0 0,
+        (a ! ix) == Unknown
+    ]
+  where
+    (Sz (Ix3 x _ _)) = A.size a
+
+fillOutside :: Droplet -> (Int, Droplet)
+fillOutside a = runST $ do
+  a' <- thawS a
+  n <- fillPositionAndNeighbors a' start
+  (n,) <$> freezeS a'
+  where
+    start = findOneOutside a
+
+fillPositionAndNeighbors ::
+  (PrimMonad m, MonadThrow m) =>
+  MDroplet (PrimState m) ->
+  Ix3 ->
+  m Int
+fillPositionAndNeighbors a ix = do
+  e <- readM a ix
+  case e of
+    Unknown -> writeM a ix Out >> P.sum <$> forM ns (fillPositionAndNeighbors a)
+    Dr -> pure 1
+    Out -> pure 0
+    In -> error "fillPositionAndNeighbors: magic"
+  where
+    sz = sizeOfMArray a
+    ns = neighborsNoDiagonal3 sz ix
 
 main :: IO ()
 main = do
@@ -87,4 +129,5 @@ main = do
   print $ totalSurface cs
   -- Part 2.
   let a = fillArray cs
-  print a
+      (n, _) = fillOutside a
+  print n
