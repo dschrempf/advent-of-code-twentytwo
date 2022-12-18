@@ -306,6 +306,7 @@ executable day18
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
+    , massiv
 
 executable day19
   import:          common, exec
