@@ -19,18 +19,36 @@ module Main
   )
 where
 
-import Aoc.Function
+import Aoc.Function (nTimesStrict)
 import Control.Applicative
-import Control.DeepSeq
-import Control.Monad hiding (sequence)
+  ( Alternative ((<|>)),
+    optional,
+  )
+import Control.DeepSeq (NFData)
+import Control.Monad (void)
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    count,
+    decimal,
+    endOfInput,
+    endOfLine,
+    letter_ascii,
+    parseOnly,
+    sepBy1,
+    sepBy1',
+    string,
+    (<?>),
+  )
 import qualified Data.ByteString.Char8 as BS
 import Data.Foldable
+  ( Foldable (foldl'),
+    find,
+  )
 import qualified Data.Map.Strict as M
-import Data.Maybe
+import Data.Maybe (catMaybes, fromJust, isJust)
 import qualified Data.Set as S
-import Debug.Pretty.Simple
-import GHC.Generics
+import Debug.Pretty.Simple (pTraceShow, pTraceShowM)
+import GHC.Generics (Generic)
 import Prelude hiding (sequence)
 
 data Valve = Valve

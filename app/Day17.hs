@@ -18,13 +18,19 @@ module Main
   )
 where
 
-import Aoc.List
-import Control.Applicative
-import Control.DeepSeq
-import Data.Attoparsec.ByteString.Char8 hiding (take)
+import Aoc.List (chop)
+import Control.Applicative (Alternative (some, (<|>)), optional)
+import Control.DeepSeq (NFData, deepseq, force)
+import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+  )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Set as S
-import GHC.Generics
+import GHC.Generics (Generic)
 
 data Jet = L | R
   deriving (Show, Eq, Generic)

@@ -18,16 +18,26 @@ module Main
   )
 where
 
-import Aoc.Array
-import Aoc.List
+import Aoc.Array (neighborsNoDiagonal3)
+import Aoc.List (pairs)
 import Control.Applicative
-import Control.Monad
-import Control.Monad.ST
+  ( optional,
+  )
+import Control.Monad (forM)
+import Control.Monad.ST (runST)
 import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+  )
 import qualified Data.ByteString.Char8 as BS
-import Data.Foldable
-import Data.Massiv.Array as A hiding (forM, forM_)
-import Prelude as P
+import Data.Foldable (traverse_)
+import Data.Functor ((<&>))
+import qualified Data.Massiv.Array as A
 
 type Cube = (Int, Int, Int)
 
@@ -50,7 +60,7 @@ neighbor :: Cube -> Cube -> Bool
 neighbor (i1, j1, k1) (i2, j2, k2) = diff i1 i2 + diff j1 j2 + diff k1 k2 <= 1
 
 nNeighbors :: [Cube] -> Int
-nNeighbors = length . filter (True ==) . P.map (uncurry neighbor) . pairs
+nNeighbors = length . filter (True ==) . map (uncurry neighbor) . pairs
 
 -- Part 1.
 
@@ -61,64 +71,62 @@ totalSurface xs = n * 6 - nNeighbors xs * 2
 
 -- Part 2.
 
-data St = Unknown | Out | Dr | In
+data St = Unknown | Out | Dr
   deriving (Eq)
 
 instance Show St where
   show Unknown = "?"
   show Out = " "
-  show Dr = "o"
-  show In = "."
+  show Dr = "O"
 
-type Droplet = Array B Ix3 St
+type Droplet = A.Array A.B A.Ix3 St
 
-type MDroplet s = MArray s B Ix3 St
+type MDroplet s = A.MArray s A.B A.Ix3 St
 
 fillArray :: [Cube] -> Droplet
 fillArray cs = runST $ do
-  a <- newMArray sz Unknown
-  traverse_ (\(x, y, z) -> writeM a (x + 1 :> y + 1 :. z + 1) Dr) cs
-  freezeS a
+  a <- A.newMArray sz Unknown
+  traverse_ (\(x, y, z) -> A.writeM a (x + 1 A.:> y + 1 A.:. z + 1) Dr) cs
+  A.freezeS a
   where
-    (xs, ys, zs) = P.unzip3 cs
+    (xs, ys, zs) = unzip3 cs
     xm = maximum xs + 3
     ym = maximum ys + 3
     zm = maximum zs + 3
-    sz = Sz $ xm :> ym :. zm
+    sz = A.Sz $ xm A.:> ym A.:. zm
 
-findOneOutside :: Droplet -> Ix3
+findOneOutside :: Droplet -> A.Ix3
 findOneOutside a =
   head
     [ ix
       | i <- [0 .. x - 1],
-        let ix = Ix3 i 0 0,
-        (a ! ix) == Unknown
+        let ix = A.Ix3 i 0 0,
+        (a A.! ix) == Unknown
     ]
   where
-    (Sz (Ix3 x _ _)) = A.size a
+    (A.Sz (A.Ix3 x _ _)) = A.size a
 
 fillOutside :: Droplet -> (Int, Droplet)
 fillOutside a = runST $ do
-  a' <- thawS a
+  a' <- A.thawS a
   n <- fillPositionAndNeighbors a' start
-  (n,) <$> freezeS a'
+  (n,) <$> A.freezeS a'
   where
     start = findOneOutside a
 
 fillPositionAndNeighbors ::
-  (PrimMonad m, MonadThrow m) =>
-  MDroplet (PrimState m) ->
-  Ix3 ->
+  (A.PrimMonad m, A.MonadThrow m) =>
+  MDroplet (A.PrimState m) ->
+  A.Ix3 ->
   m Int
 fillPositionAndNeighbors a ix = do
-  e <- readM a ix
+  e <- A.readM a ix
   case e of
-    Unknown -> writeM a ix Out >> P.sum <$> forM ns (fillPositionAndNeighbors a)
+    Unknown -> A.writeM a ix Out >> forM ns (fillPositionAndNeighbors a) <&> sum
     Dr -> pure 1
     Out -> pure 0
-    In -> error "fillPositionAndNeighbors: magic"
   where
-    sz = sizeOfMArray a
+    sz = A.sizeOfMArray a
     ns = neighborsNoDiagonal3 sz ix
 
 main :: IO ()
