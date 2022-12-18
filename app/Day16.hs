@@ -205,12 +205,15 @@ comparePaths2 :: Int -> Int -> Path2 -> Path2 -> Ordering
 comparePaths2 mnow mmax (Path2 x1 x2) (Path2 y1 y2)
   | current x1 /= current y1 = error "comparePath2: bug: current valves of path 1 differ"
   | current x2 /= current y2 = error "comparePath2: bug: current valves of path 2 differ"
-  | opened x1 `S.isSubsetOf` opened y1 && (released x1 + released x2 >= released y1 + released y2) = GT
-  | opened y1 `S.isSubsetOf` opened x1 && (released y1 + released y2 >= released x1 + released x2) = LT
+  | opened x1 `S.isSubsetOf` opened y1 && (rx >= ry) = GT
+  | opened y1 `S.isSubsetOf` opened x1 && (ry >= rx) = LT
   | otherwise = case (comparePaths mnow mmax x1 y1, comparePaths mnow mmax x2 y2) of
       (GT, GT) -> GT
       (LT, LT) -> LT
       (_, _) -> EQ
+  where
+    rx = released x1 + released x2
+    ry = released y1 + released y2
 
 -- Gives 2651 which is still too low.
 --

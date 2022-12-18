@@ -50,9 +50,7 @@ data Move = Move
   deriving (Show)
 
 pCrate :: Parser (Maybe Crate)
-pCrate =
-  Just <$> (char '[' *> anyChar <* char ']')
-    Control.Applicative.<|> string "   " $> Nothing
+pCrate = Just <$> (char '[' *> anyChar <* char ']') <|> string "   " $> Nothing
 
 pCrateLine :: Parser [Maybe Crate]
 pCrateLine = pCrate `sepBy1'` char ' '

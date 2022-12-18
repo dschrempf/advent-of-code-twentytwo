@@ -46,7 +46,12 @@ pHeight :: Parser Int
 pHeight = cToI <$> letter_ascii
 
 pLandscape :: Parser Landscape
-pLandscape = A.fromLists' A.Seq <$> some pHeight `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+pLandscape =
+  A.fromLists' A.Seq
+    <$> some pHeight
+    `sepBy1'` endOfLine
+    <* optional endOfLine
+    <* endOfInput
 
 -- First, I tried to get the paths as a tree, but this was too slow.
 type Path = [A.Ix2]

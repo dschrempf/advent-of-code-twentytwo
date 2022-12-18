@@ -123,7 +123,10 @@ throw decreaseWorry (State i ms)
   -- Do not throw, change to next monkey.
   | nIs == 0 = let x' = State i' ms in throw decreaseWorry x'
   -- Throw, do not change to next monkey.
-  | otherwise = let x' = State i $ throw1 decreaseWorry i ms in first (x' :) <$> throw decreaseWorry x'
+  | otherwise =
+      let x' = State i $ throw1 decreaseWorry i ms
+       in first (x' :)
+            <$> throw decreaseWorry x'
   where
     nMs = V.length ms
     is = items $ ms V.! i
