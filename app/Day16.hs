@@ -84,9 +84,11 @@ instance NFData Path
 comparePaths :: Int -> Int -> Path -> Path -> Ordering
 comparePaths mnow mmax x y
   | current x /= current y = error "comparePaths: bug: current valves differ"
-  | otherwise = compare (released x + yb) (released y + xb)
+  | otherwise = compare (gradePath mnow mmax x y) (gradePath mnow mmax y x)
+
+gradePath :: Int -> Int -> Path -> Path -> Int
+gradePath mnow mmax x y = released x + yb
   where
-    xb = backwards mnow mmax (opened y) $ sequence x
     yb = backwards mnow mmax (opened x) $ sequence y
 
 -- Calculate released pressure walking the path backwards.
@@ -185,10 +187,18 @@ comparePaths2 :: Int -> Int -> Path2 -> Path2 -> Ordering
 comparePaths2 mnow mmax (Path2 x1 x2) (Path2 y1 y2)
   | current x1 /= current y1 = error "comparePath2: bug: current valves of path 1 differ"
   | current x2 /= current y2 = error "comparePath2: bug: current valves of path 2 differ"
+  | opened y1 `S.isSubsetOf` opened x1 && (released y1 + released y2 > released x1 + released x2) = LT
+  | opened x1 `S.isSubsetOf` opened y1 && (released x1 + released x2 > released y1 + released y2) = GT
   | otherwise = case (comparePaths mnow mmax x1 y1, comparePaths mnow mmax x2 y2) of
       (GT, GT) -> GT
       (LT, LT) -> LT
       (_, _) -> EQ
+
+-- Gives 2651 which is still too low.
+--
+-- \| otherwise = compare (f x1 y1 + f x2 y2) (f y1 x1 + f y2 x2)
+-- where
+--   f = gradePath mnow mmax
 
 type Map2 = M.Map (Valve, Valve) [Path2]
 
@@ -208,14 +218,23 @@ openOrMove2 mnow mmax vs p@(Path2 x y)
     xs = openOrMove mnow mmax vs x
     ys = openOrMove mnow mmax vs y
     ps2' =
-      [ Path2 a' b'
+      [ Path2 a'' b''
         | a <- xs,
+          let ao = lastOpened x a,
           b <- ys,
-          opened a `S.disjoint` opened b,
-          let os = opened a `S.union` opened b,
-          let a' = a {opened = os},
-          let b' = b {opened = os}
+          let bo = lastOpened y b,
+          -- If both paths have opened a valve, ensure it has not been the same one.
+          not $ isJust ao && (ao == bo),
+          let (a', b') = if current a <= current b then (a, b) else (b, a),
+          let os = opened a' `S.union` opened b',
+          let a'' = a' {opened = os},
+          let b'' = b' {opened = os}
       ]
+
+lastOpened :: Path -> Path -> Maybe Valve
+lastOpened x y
+  | released x < released y = Just $ snd $ head $ sequence y
+  | otherwise = Nothing
 
 sortIntoMap2 :: Int -> Int -> [Path2] -> Map2
 sortIntoMap2 mnow mmax = foldl' insertBetter M.empty
@@ -226,7 +245,7 @@ sortIntoMap2 mnow mmax = foldl' insertBetter M.empty
       -- If the new path is better than all others, use it exclusively.
       | all (== GT) cs = [x]
       -- If the new path is better than some others, use the best paths.
-      | GT `elem` cs = x : catMaybes (zipWith p cs ys)
+      | EQ `elem` cs = x : catMaybes (zipWith p cs ys)
       | otherwise = ys
       where
         cs = map (comparePaths2 mnow mmax x) ys
@@ -235,9 +254,10 @@ sortIntoMap2 mnow mmax = foldl' insertBetter M.empty
 
 next2 :: Int -> Valves -> Trace2 -> Trace2
 next2 mmax vs (Trace2 mnow xs) =
-  case compare mnow mmax of
-    GT -> error "next: out of minutes"
-    _ -> Trace2 (succ mnow)
+  pTraceShow mnow
+    $ case compare mnow mmax of
+      GT -> error "next: out of minutes"
+      _ -> Trace2 (succ mnow)
     $ sortIntoMap2 mnow mmax
     $ concatMap (openOrMove2 mnow mmax vs)
     $ concat
@@ -245,7 +265,7 @@ next2 mmax vs (Trace2 mnow xs) =
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input16-sample.txt"
+  d <- BS.readFile "inputs/input16.txt"
   -- Part 1.
   let xs = either error id $ parseOnly pInput d
       vs = S.fromList xs
@@ -258,4 +278,7 @@ main = do
   let p20 = Path2 p0 p0
       t20 = Trace2 1 $ M.singleton (x0, x0) [p20]
       (Trace2 _ m2) = nTimes 26 (next2 26 vs) t20
-  pTraceShowM $ maximum $ map (\(Path2 a b) -> released a + released b) $ concat $ M.elems m2
+      ys = concat $ M.elems m2
+  pTraceShowM $ maximum $ map (\(Path2 a b) -> released a + released b) ys
+
+-- pTraceShowM $ maximumBy (\(Path2 a b) (Path2 c d) -> compare (released a + released b) (released c + released d)) ys
