@@ -17,4 +17,4 @@ Also, have a look at the [[https://www.reddit.com/r/haskell/comments/z9mjcz/adve
 And finally I found a nice [[https://github.com/samcoy3/advent-of-code-template][Haskell template]].
 
 * Notes
-- In my opinion, day 16 was (so far, currently are at day 18) by far the hardest.
+- In my opinion, day 16 was (so far, today is day 18) by far the hardest.

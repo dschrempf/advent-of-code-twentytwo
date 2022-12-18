@@ -19,5 +19,5 @@ And finally I found a nice [Haskell template](https://github.com/samcoy3/advent-
 
 # Notes
 
--   In my opinion, day 16 was (so far, currently are at day 18) by far the hardest.
+-   In my opinion, day 16 was (so far, today is day 18) by far the hardest.
 
