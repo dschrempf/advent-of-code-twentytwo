@@ -3,7 +3,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Day 19; ?
+-- Description :  Day 19; Not Enough Minerals
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
@@ -24,6 +24,7 @@ where
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
+import Data.Foldable
 import Data.Function
 import Data.Maybe
 import qualified Data.Set as S
@@ -145,8 +146,8 @@ makeLenses ''Resources
 data State = State
   { minute :: Int,
     instruction :: Maybe Instruction,
-    robots :: Robots,
-    resources :: Resources
+    _robots :: Robots,
+    _resources :: Resources
   }
   deriving (Show, Eq, Ord)
 
@@ -247,13 +248,31 @@ instruct bp (BlueprintSpec orMax clMax obMax) (State n mbd ros res) = case mbd o
   where
     n' = n + 1
 
+-- This helps A LOT. Basically, throw out all states that cannot beat the best
+-- state, even when they build a geode robot each turn, from now on.
+prune :: Int -> S.Set State -> S.Set State
+prune timeMax xs = S.filter p xs
+  where
+    bestSoFar = maximumBy (compare `on` (_geodes . _resources)) xs
+    timeLeft = timeMax - minute bestSoFar
+    possible = timeLeft * (timeLeft - 1) `div` 2
+    getMaxG x =
+      let m = x ^. resources . geodes . geode
+          r = x ^. robots . geodeRobots . geodeRobot
+       in m + r * timeLeft + possible
+    bestG =
+      let m = bestSoFar ^. resources . geodes . geode
+          r = bestSoFar ^. robots . geodeRobots . geodeRobot
+       in m + r * timeLeft
+    p x = getMaxG x >= bestG
+
 findBest :: Int -> Blueprint -> Geode
-findBest n bp = maximum $ S.map (_geodes . resources) $ iterate r s0 !! n
+findBest n bp = maximum $ S.map (_geodes . _resources) $ iterate r s0 !! n
   where
     s0 = start bp
     l = lap bp
     i = instruct bp (getBlueprintSpec bp)
-    r = S.unions . S.map (i . l)
+    r = prune n . S.unions . S.map (i . l)
 
 -- -- I used these functions while working on the puzzle.
 -- findAllS :: Int -> Blueprint -> S.Set State
@@ -265,7 +284,7 @@ findBest n bp = maximum $ S.map (_geodes . resources) $ iterate r s0 !! n
 --     r = S.unions . S.map (i . l)
 
 -- findBestS :: Int -> Blueprint -> State
--- findBestS n bp = maximumBy (compare `on` (_geodes . resources)) $ findAllS n bp
+-- findBestS n bp = maximumBy (compare `on` (_geodes . _resources)) $ findAllS n bp
 
 data BlueprintSpec = BlueprintSpec
   { _maxOre :: Ore,
