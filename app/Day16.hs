@@ -47,8 +47,8 @@ import Data.Foldable
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes, fromJust, isJust)
 import qualified Data.Set as S
-import Debug.Pretty.Simple (pTraceShow, pTraceShowM)
 import GHC.Generics (Generic)
+import Text.Pretty.Simple (pPrint)
 import Prelude hiding (sequence)
 
 data Valve = Valve
@@ -278,10 +278,9 @@ sortIntoMap2 mnow mmax = foldl' insertBetter M.empty
 
 next2 :: Int -> Valves -> Trace2 -> Trace2
 next2 mmax vs (Trace2 mnow xs) =
-  pTraceShow mnow
-    $ case compare mnow mmax of
-      GT -> error "next: out of minutes"
-      _ -> Trace2 (succ mnow)
+  case compare mnow mmax of
+    GT -> error "next: out of minutes"
+    _ -> Trace2 (succ mnow)
     $ sortIntoMap2 mnow mmax
     $ concatMap (openOrMove2 mnow mmax vs)
     $ concat
@@ -297,10 +296,10 @@ main = do
       p0 = Path S.empty [] x0 (S.singleton x0) 0
       t0 = Trace 1 $ M.singleton x0 [p0]
       (Trace _ m) = nTimesStrict 30 (next 30 vs) t0
-  pTraceShowM $ maximum $ map released $ concat $ M.elems m
+  pPrint $ maximum $ map released $ concat $ M.elems m
   -- Part 2.
   let p20 = Path2 p0 p0
       t20 = Trace2 1 $ M.singleton (x0, x0) [p20]
       (Trace2 _ m2) = nTimesStrict 26 (next2 26 vs) t20
       ys = concat $ M.elems m2
-  pTraceShowM $ maximum $ map (\(Path2 a b) -> released a + released b) ys
+  pPrint $ maximum $ map (\(Path2 a b) -> released a + released b) ys

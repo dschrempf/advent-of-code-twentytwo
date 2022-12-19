@@ -317,8 +317,11 @@ executable day19
   ghc-options:
   build-depends:
     , attoparsec
-    , base        >=4.7 && <5
+    , base           >=4.7 && <5
     , bytestring
+    , microlens
+    , microlens-th
+    , pretty-simple
 
 executable day20
   import:          common, exec
