@@ -14,6 +14,8 @@
 -- Creation date: Fri Dec  9 09:10:38 2022.
 --
 -- See https://adventofcode.com/2022/day/19.
+--
+-- I tried to use lenses for this project, but oh my ..., it looks ugly.
 module Main
   ( main,
   )
@@ -22,6 +24,9 @@ where
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8 hiding (take)
 import qualified Data.ByteString.Char8 as BS
+import Data.Function
+import Data.Maybe
+import qualified Data.Set as S
 import Lens.Micro
 import Lens.Micro.TH
 import Text.Pretty.Simple
@@ -95,25 +100,25 @@ data Instruction
   | BuildClayRobot
   | BuildObsidianRobot
   | BuildGeodeRobot
-  deriving (Show, Eq)
+  deriving (Show, Eq, Bounded, Enum, Ord)
 
 newtype OreRobot = OreRobot {_oreRobot :: Int}
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''OreRobot
 
 newtype ClayRobot = ClayRobot {_clayRobot :: Int}
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''ClayRobot
 
 newtype ObsidianRobot = ObsidianRobot {_obsidianRobot :: Int}
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''ObsidianRobot
 
 newtype GeodeRobot = GeodeRobot {_geodeRobot :: Int}
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''GeodeRobot
 
@@ -123,7 +128,7 @@ data Robots = Robots
     _obsidianRobots :: ObsidianRobot,
     _geodeRobots :: GeodeRobot
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''Robots
 
@@ -133,21 +138,22 @@ data Resources = Resources
     _obsidians :: Obsidian,
     _geodes :: Geode
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''Resources
 
 data State = State
-  { instruction :: Maybe Instruction,
+  { minute :: Int,
+    instruction :: Maybe Instruction,
     robots :: Robots,
     resources :: Resources
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 makeLenses ''State
 
-startWith :: Instruction -> State
-startWith bd = State (Just bd) ros0 res0
+start :: Blueprint -> S.Set State
+start bp = instruct bp (getBlueprintSpec bp) $ State 0 Nothing ros0 res0
   where
     ros0 = Robots (OreRobot 1) (ClayRobot 0) (ObsidianRobot 0) (GeodeRobot 0)
     res0 = Resources (Ore 0) (Clay 0) (Obsidian 0) (Geode 0)
@@ -198,22 +204,90 @@ build :: Blueprint -> Instruction -> Robots -> Resources -> (Robots, Resources)
 build bp bd ros res = (addRobot bd ros, subtractResources bp bd res)
 
 lap :: Blueprint -> State -> State
-lap bp (State mbd ros res) = case mbd of
+lap bp (State n mbd ros res) = case mbd of
   (Just bd)
     -- First check if we can afford the robot.
     | canAfford bp bd res ->
         -- If so, first harvest, then add the robot.
         let res' = harvest ros res
             (ros', res'') = build bp bd ros res'
-         in State Nothing ros' res''
-    | otherwise -> State mbd ros $ harvest ros res
+         in State n Nothing ros' res''
+    | otherwise -> State n mbd ros $ harvest ros res
   Nothing -> error "lap: no instruction"
+
+instruct :: Blueprint -> BlueprintSpec -> State -> S.Set State
+instruct bp (BlueprintSpec orMax clMax obMax) (State n mbd ros res) = case mbd of
+  Nothing
+    | canAfford bp BuildGeodeRobot res -> S.singleton $ State n' (Just BuildGeodeRobot) ros res
+    -- -- The following trick worked for part 1, but not for part 2.
+    -- \| canAfford bp BuildObsidianRobot res -> S.singleton $ State n' (Just BuildObsidianRobot) ros res
+    | otherwise ->
+        -- Only build obsidian and geode robots if resources are being
+        -- harvested. Do not build more robots than necessary.
+        let oreR =
+              if ros ^. oreRobots . oreRobot < orMax ^. ore
+                then Just BuildOreRobot
+                else Nothing
+            claR =
+              if ros ^. clayRobots . clayRobot < clMax ^. clay
+                then Just BuildClayRobot
+                else Nothing
+            obsR =
+              if ros ^. clayRobots . clayRobot > 0
+                && ros ^. obsidianRobots . obsidianRobot < obMax ^. obsidian
+                then Just BuildObsidianRobot
+                else Nothing
+            geoR =
+              if ros ^. obsidianRobots . obsidianRobot > 0
+                then Just BuildGeodeRobot
+                else Nothing
+            bds = catMaybes [oreR, claR, obsR, geoR]
+         in S.fromList [State n' (Just bd) ros res | bd <- bds]
+  Just bd -> S.singleton $ State n' (Just bd) ros res
+  where
+    n' = n + 1
+
+findBest :: Int -> Blueprint -> Geode
+findBest n bp = maximum $ S.map (_geodes . resources) $ iterate r s0 !! n
+  where
+    s0 = start bp
+    l = lap bp
+    i = instruct bp (getBlueprintSpec bp)
+    r = S.unions . S.map (i . l)
+
+-- -- I used these functions while working on the puzzle.
+-- findAllS :: Int -> Blueprint -> S.Set State
+-- findAllS n bp = iterate r s0 !! n
+--   where
+--     s0 = start bp
+--     l = lap bp
+--     i = instruct bp (getBlueprintSpec bp)
+--     r = S.unions . S.map (i . l)
+
+-- findBestS :: Int -> Blueprint -> State
+-- findBestS n bp = maximumBy (compare `on` (_geodes . resources)) $ findAllS n bp
+
+data BlueprintSpec = BlueprintSpec
+  { _maxOre :: Ore,
+    _maxClay :: Clay,
+    _maxObsidian :: Obsidian
+  }
+  deriving (Show)
+
+getBlueprintSpec :: Blueprint -> BlueprintSpec
+getBlueprintSpec (Blueprint _ _ ore2 (_, cla) (_, obs)) =
+  BlueprintSpec oreMax cla obs
+  where
+    -- We won't get to building obsidian or geode robots each turn, so it is
+    -- enough to be able to build clay robots each turn.
+    oreMax = ore2
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input19-sample.txt"
+  d <- BS.readFile "inputs/input19.txt"
   let bs = either error id $ parseOnly pInput d
-      s0 = startWith BuildOreRobot
-      bp = head bs
-      f = lap bp
-  pPrint $ take 6 $ iterate f s0
+  -- Part 1.
+  let bests1 = map (findBest 24) bs
+  pPrint $ sum $ zipWith ((*) . _geode) bests1 [1 ..]
+  -- Part 2.
+  pPrint $ product $ map (_geode . findBest 32) $ take 3 bs

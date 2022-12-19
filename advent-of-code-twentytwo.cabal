@@ -319,6 +319,7 @@ executable day19
     , attoparsec
     , base           >=4.7 && <5
     , bytestring
+    , containers
     , microlens
     , microlens-th
     , pretty-simple
