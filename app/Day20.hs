@@ -17,6 +17,7 @@ module Main
 where
 
 import Control.Applicative (optional)
+import Control.Monad.ST
 import Data.Attoparsec.ByteString.Char8
   ( Parser,
     decimal,
@@ -27,27 +28,37 @@ import Data.Attoparsec.ByteString.Char8
     signed,
   )
 import qualified Data.ByteString.Char8 as BS
+import Data.List (scanl')
 import Data.Massiv.Array
   ( Comp (Seq),
     Ix1,
+    MVector,
     Size (size),
     Sz (Sz),
     U (U),
     Vector,
     computeAs,
-    computeS,
     drop,
+    freezeS,
     fromList,
+    imapM_,
+    makeArray,
+    modify_,
     sappend,
     sconcat,
     singleton,
     take,
+    thawS,
     (!),
   )
+import Data.Massiv.Core (PrimMonad (..))
+import Debug.Trace
 import Prelude hiding (drop, take)
 
 -- Array of numbers and their current indices.
 type Xs = Vector U (Int, Ix1)
+
+type XsM m = MVector (PrimState m) U (Int, Ix1)
 
 -- Shifted array of original indices.
 type Is = Vector U Ix1
@@ -55,21 +66,42 @@ type Is = Vector U Ix1
 pInput :: Parser [Int]
 pInput = signed decimal `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
+updateIs :: Is -> Xs -> Xs
+updateIs is xs = runST $ do
+  m <- thawS xs
+  imapM_ (updateI m) is
+  freezeS m
+
+updateI :: PrimMonad m => XsM m -> Ix1 -> Ix1 -> m ()
+updateI m iNew = modify_ m f
+  where
+    f (x, _) = pure (x, iNew)
+
 shift ::
+  (Xs, Is) ->
   -- Original index of element being shifted.
   Int ->
-  Xs ->
-  Is ->
   (Xs, Is)
-shift i0 xs is = (undefined, isNew)
+shift (xs, is) i0 = (xsNew, isNew)
   where
     (Sz l) = size xs
     (x, iNow) = xs ! i0
-    -- Current element of index vector.
-    iNew = (iNow + x) `mod` pred l
     -- Index vector without the current element.
     isNoX = computeAs U $ take (Sz iNow) is `sappend` drop (Sz $ succ iNow) is
-    isNew = computeAs U $ sconcat [take (Sz iNew) isNoX, singleton i0, drop (Sz $ succ iNew) isNoX]
+    -- Current element of index vector.
+    lm1 = pred l
+    iNew = traceShowId $ case (iNow + x) `mod` lm1 of
+      n
+        | n == 0 -> lm1
+        | n == lm1 -> 0
+        | otherwise -> n
+    isNew = computeAs U $ sconcat [take (Sz iNew) isNoX, singleton i0, drop (Sz iNew) isNoX]
+    xsNew = updateIs isNew xs
+
+getShifted :: (Xs, Is) -> Vector U Int
+getShifted (xs, is) = makeArray Seq (size xs) f
+  where
+    f i = let i0 = is ! i in fst $ xs ! i0
 
 main :: IO ()
 main = do
@@ -80,4 +112,7 @@ main = do
       (Sz l) = size xs
       is :: Is
       is = fromList Seq [0 .. pred l]
-  print xs
+      s0 = (xs, is)
+      ss = scanl' shift s0 [0 .. pred l]
+      f x = (x, getShifted x)
+  mapM_ (print . f) ss
