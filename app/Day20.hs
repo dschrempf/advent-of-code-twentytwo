@@ -28,7 +28,8 @@ import Data.Attoparsec.ByteString.Char8
     signed,
   )
 import qualified Data.ByteString.Char8 as BS
-import Data.List (scanl')
+import Data.Foldable (foldl')
+import Data.List (elemIndex)
 import Data.Massiv.Array
   ( Comp (Seq),
     Ix1,
@@ -43,17 +44,19 @@ import Data.Massiv.Array
     fromList,
     imapM_,
     makeArray,
+    map,
     modify_,
     sappend,
     sconcat,
     singleton,
     take,
     thawS,
+    toList,
     (!),
   )
 import Data.Massiv.Core (PrimMonad (..))
-import Debug.Trace
-import Prelude hiding (drop, take)
+import Data.Maybe (fromJust)
+import Prelude hiding (drop, map, take)
 
 -- Array of numbers and their current indices.
 type Xs = Vector U (Int, Ix1)
@@ -65,6 +68,8 @@ type Is = Vector U Ix1
 
 pInput :: Parser [Int]
 pInput = signed decimal `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+
+-- Part 1.
 
 updateIs :: Is -> Xs -> Xs
 updateIs is xs = runST $ do
@@ -90,7 +95,7 @@ shift (xs, is) i0 = (xsNew, isNew)
     isNoX = computeAs U $ take (Sz iNow) is `sappend` drop (Sz $ succ iNow) is
     -- Current element of index vector.
     lm1 = pred l
-    iNew = traceShowId $ case (iNow + x) `mod` lm1 of
+    iNew = case (iNow + x) `mod` lm1 of
       n
         | n == 0 -> lm1
         | n == lm1 -> 0
@@ -103,9 +108,19 @@ getShifted (xs, is) = makeArray Seq (size xs) f
   where
     f i = let i0 = is ! i in fst $ xs ! i0
 
+getSol :: Vector U Int -> Int
+getSol xs = sum [xs ! ((i0 + n) `mod` l) | n <- ns]
+  where
+    (Sz l) = size xs
+    i0 = fromJust $ elemIndex 0 $ toList xs
+    ns = [1000, 2000, 3000]
+
+-- Part 2.
+
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input20-sample.txt"
+  d <- BS.readFile "inputs/input20.txt"
+  -- Part 1.
   let ls = either error id $ parseOnly pInput d
       xs :: Xs
       xs = fromList Seq $ zip ls [0 ..]
@@ -113,6 +128,14 @@ main = do
       is :: Is
       is = fromList Seq [0 .. pred l]
       s0 = (xs, is)
-      ss = scanl' shift s0 [0 .. pred l]
-      f x = (x, getShifted x)
-  mapM_ (print . f) ss
+      s = foldl' shift s0 [0 .. pred l]
+  -- let ss = scanl' shift s0 [0 .. pred l]
+  --     f x = (x, getShifted x)
+  -- mapM_ (print . f) ss
+  print $ getSol $ getShifted s
+  -- Part 2.
+  let f (x, i) = (811589153 * x, i)
+      xs' = computeAs U $ map f xs
+      s02 = (xs', is)
+      sOnce x = foldl' shift x [0 .. pred l]
+  print $ getSol $ getShifted $ iterate sOnce s02 !! 10
