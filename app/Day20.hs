@@ -16,6 +16,7 @@ module Main
   )
 where
 
+import Aoc.Function
 import Control.Applicative (optional)
 import Control.Monad.ST
 import Data.Attoparsec.ByteString.Char8
@@ -138,4 +139,4 @@ main = do
       xs' = computeAs U $ map f xs
       s02 = (xs', is)
       sOnce x = foldl' shift x [0 .. pred l]
-  print $ getSol $ getShifted $ iterate sOnce s02 !! 10
+  print $ getSol $ getShifted $ nTimesStrict 10 sOnce s02
