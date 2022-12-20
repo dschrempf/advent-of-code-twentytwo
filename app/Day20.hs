@@ -97,10 +97,9 @@ shift (xs, is) i0 = (xsNew, isNew)
     -- Current element of index vector.
     lm1 = pred l
     iNew = case (iNow + x) `mod` lm1 of
-      n
-        | n == 0 -> lm1
-        | n == lm1 -> 0
-        | otherwise -> n
+      -- Only wrap when going to left boundary, this is a bit weird...
+      0 -> lm1
+      n -> n
     isNew = computeAs U $ sconcat [take (Sz iNew) isNoX, singleton i0, drop (Sz iNew) isNoX]
     xsNew = updateIs isNew xs
 
