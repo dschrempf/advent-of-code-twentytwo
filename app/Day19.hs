@@ -21,16 +21,25 @@ module Main
   )
 where
 
-import Control.Applicative
-import Data.Attoparsec.ByteString.Char8 hiding (take)
+import Control.Applicative (optional)
+import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    decimal,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+    string,
+  )
 import qualified Data.ByteString.Char8 as BS
-import Data.Foldable
-import Data.Function
-import Data.Maybe
+import Data.Foldable (maximumBy)
+import Data.Function (on, (&))
+import Data.Maybe (catMaybes)
 import qualified Data.Set as S
-import Lens.Micro
-import Lens.Micro.TH
-import Text.Pretty.Simple
+import Lens.Micro ((%~), (^.), _1, _2)
+import Lens.Micro.TH (makeLenses)
+import Text.Pretty.Simple (pPrint)
 
 newtype Ore = Ore {_ore :: Int}
   deriving (Show, Eq, Ord)

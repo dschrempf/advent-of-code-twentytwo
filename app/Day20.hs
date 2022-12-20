@@ -1,6 +1,6 @@
 -- |
 -- Module      :  Main
--- Description :  Day 20; ?
+-- Description :  Day 20; Grove Positioning System
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
