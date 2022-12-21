@@ -2,7 +2,7 @@
 
 -- |
 -- Module      :  Main
--- Description :  Day 21; ?
+-- Description :  Day 21; Monkey Math
 -- Copyright   :  2022 Dominik Schrempf
 -- License     :  GPL-3.0-or-later
 --
@@ -174,14 +174,8 @@ getInvR Di = flip div
 solveTreeWith :: Int -> MonkeyT -> Either String Int
 solveTreeWith n (Node U []) = Right n
 solveTreeWith n (Node (O o) [x, y]) = case (cTree x, cTree y) of
-  (Right l, Left _) ->
-    let i = getInvR o
-        r = n `i` l
-     in solveTreeWith r y
-  (Left _, Right r) ->
-    let i = getInvL o
-        l = n `i` r
-     in solveTreeWith l x
+  (Right l, Left _) -> solveTreeWith (getInvR o n l) y
+  (Left _, Right r) -> solveTreeWith (getInvL o n r) x
   (Left _, Left _) -> Left "solveTreeWith: both subtrees are unknown"
   (Right _, Right _) -> Left "solveTreeWith: both subtrees are known"
 solveTreeWith _ _ = Left "solveTreeWith: unhandled operation"
