@@ -34,7 +34,7 @@ import Data.Attoparsec.ByteString.Char8
   )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map.Strict as M
-import Data.Tree (Tree)
+import Data.Tree (Tree (Node))
 
 type Name = BS.ByteString
 
@@ -87,18 +87,32 @@ pInput = pMonkey `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
 type Monkeys = M.Map Name MonkeyI
 
-data MonkeyN
-  = Op (Int -> Int -> Int)
-  | Li Int
+data MonkeyN = Op (Int -> Int -> Int) | Li Int
+
+-- For debugging.
+instance Show MonkeyN where
+  show (Op _) = "<>"
+  show (Li n) = show n
 
 type MonkeyT = Tree MonkeyN
 
 bTree :: Monkeys -> MonkeyT
-bTree = undefined
+bTree ms = go r
+  where
+    r = ms M.! "root"
+    go :: MonkeyI -> MonkeyT
+    go (MonkeyL n) = Node (Li n) []
+    go (MonkeyO x o y) = Node (Op o) [go (ms M.! x), go (ms M.! y)]
+
+cTree :: MonkeyT -> Int
+cTree (Node (Li n) []) = n
+cTree (Node (Op o) [x, y]) = cTree x `o` cTree y
+cTree _ = error "cTree: unknown operation"
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input21-sample.txt"
+  d <- BS.readFile "inputs/input21.txt"
   let ms = either error id $ parseOnly pInput d
       mm = M.fromList ms
-  print mm
+      mt = bTree mm
+  print $ cTree mt
