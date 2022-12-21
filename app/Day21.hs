@@ -18,13 +18,17 @@ module Main
   )
 where
 
-import Control.Applicative ((<|>))
+import Control.Applicative (optional, (<|>))
 import Data.Attoparsec.ByteString.Char8
   ( Parser,
     char,
     choice,
     decimal,
+    endOfInput,
+    endOfLine,
     isAlpha_ascii,
+    parseOnly,
+    sepBy1',
     string,
     takeWhile1,
   )
@@ -32,17 +36,22 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map.Strict as M
 import Data.Tree (Tree)
 
-data MonkeyIn
-  = MonkeyOp
-      { arg1 :: BS.ByteString,
+type Name = BS.ByteString
+
+data MonkeyI
+  = MonkeyO
+      { arg1 :: Name,
         op :: Int -> Int -> Int,
-        arg2 :: BS.ByteString
+        arg2 :: Name
       }
-  | MonkeyLi Int
+  | MonkeyL Int
 
-data Monkey = Monkey BS.ByteString MonkeyIn
+-- For debugging.
+instance Show MonkeyI where
+  show (MonkeyO a1 _ a2) = show $ a1 <> " <> " <> a2
+  show (MonkeyL n) = show n
 
-pName :: Parser BS.ByteString
+pName :: Parser Name
 pName = takeWhile1 isAlpha_ascii
 
 pOp :: Parser (Int -> Int -> Int)
@@ -54,32 +63,42 @@ pOp = choice [pPl, pMi, pPr, pDi]
     pPr = f (*) '*'
     pDi = f div '/'
 
-pMonkeyOp :: Parser MonkeyIn
-pMonkeyOp = do
+pMonkeyO :: Parser MonkeyI
+pMonkeyO = do
   a1 <- pName
   _ <- char ' '
   op <- pOp
   _ <- char ' '
   a2 <- pName
-  pure $ MonkeyOp a1 op a2
+  pure $ MonkeyO a1 op a2
 
-pMonkeyIn :: Parser MonkeyIn
-pMonkeyIn = pMonkeyOp <|> (MonkeyLi <$> decimal)
+pMonkeyI :: Parser MonkeyI
+pMonkeyI = pMonkeyO <|> (MonkeyL <$> decimal)
 
-pMonkey :: Parser Monkey
+pMonkey :: Parser (Name, MonkeyI)
 pMonkey = do
   n <- pName
   _ <- string ": "
-  undefined
+  i <- pMonkeyI
+  pure $ (n, i)
 
-type Monkeys = M.Map BS.ByteString MonkeyIn
+pInput :: Parser [(Name, MonkeyI)]
+pInput = pMonkey `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
--- data MonkeyO
---   = Op (Int -> Int -> Int)
---   | Id String
---   | Li Int
+type Monkeys = M.Map Name MonkeyI
 
--- type MTree = Tree MonkeyO
+data MonkeyN
+  = Op (Int -> Int -> Int)
+  | Li Int
+
+type MonkeyT = Tree MonkeyN
+
+bTree :: Monkeys -> MonkeyT
+bTree = undefined
 
 main :: IO ()
-main = undefined
+main = do
+  d <- BS.readFile "inputs/input21-sample.txt"
+  let ms = either error id $ parseOnly pInput d
+      mm = M.fromList ms
+  print mm
