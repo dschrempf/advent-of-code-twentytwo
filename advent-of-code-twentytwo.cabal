@@ -346,7 +346,6 @@ executable day21
   autogen-modules:
   ghc-options:
   build-depends:
-    , aoc
     , attoparsec
     , base        >=4.7 && <5
     , bytestring

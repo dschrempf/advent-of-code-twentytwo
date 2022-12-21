@@ -34,15 +34,22 @@ import Data.Attoparsec.ByteString.Char8
   )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map.Strict as M
-import Data.Maybe
-import Data.Tree (Tree (Node, rootLabel))
+import Data.Tree (Tree (..))
 
 type Name = BS.ByteString
+
+data Op = Ad | Su | Mu | Di
+
+getOp :: Op -> (Int -> Int -> Int)
+getOp Ad = (+)
+getOp Su = (-)
+getOp Mu = (*)
+getOp Di = div
 
 data MonkeyI
   = MonkeyO
       { _oarg1 :: Name,
-        _op :: Int -> Int -> Int,
+        _op :: Op,
         _oarg2 :: Name
       }
   | MonkeyE
@@ -50,24 +57,26 @@ data MonkeyI
         _earg2 :: Name
       }
   | MonkeyL Int
+  | MonkeyU
 
 -- For debugging.
 instance Show MonkeyI where
   show (MonkeyO a1 _ a2) = show $ a1 <> " <> " <> a2
-  show (MonkeyE a1 a2) = show $ a1 <> " == " <> a2
   show (MonkeyL n) = show n
+  show (MonkeyE a1 a2) = show $ a1 <> " == " <> a2
+  show MonkeyU = "?"
 
 pName :: Parser Name
 pName = takeWhile1 isAlpha_ascii
 
-pOp :: Parser (Int -> Int -> Int)
-pOp = choice [pPl, pMi, pPr, pDi]
+pOp :: Parser Op
+pOp = choice [pAd, pSu, pMu, pDi]
   where
     f o c = o <$ char c
-    pPl = f (+) '+'
-    pMi = f (-) '-'
-    pPr = f (*) '*'
-    pDi = f div '/'
+    pAd = f Ad '+'
+    pSu = f Su '-'
+    pMu = f Mu '*'
+    pDi = f Di '/'
 
 pMonkeyO :: Parser MonkeyI
 pMonkeyO = do
@@ -86,20 +95,21 @@ pMonkey = do
   n <- pName
   _ <- string ": "
   i <- pMonkeyI
-  pure $ (n, i)
+  pure (n, i)
 
 pInput :: Parser [(Name, MonkeyI)]
 pInput = pMonkey `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
 type Monkeys = M.Map Name MonkeyI
 
-data MonkeyN = Op (Int -> Int -> Int) | Eq | Li Int
+data MonkeyN = O Op | E | L Int | U
 
 -- For debugging.
 instance Show MonkeyN where
-  show (Op _) = "<>"
-  show Eq = "=="
-  show (Li n) = show n
+  show (O _) = "<>"
+  show E = "=="
+  show (L n) = show n
+  show U = "?"
 
 type MonkeyT = Tree MonkeyN
 
@@ -108,33 +118,82 @@ bTree ms = go r
   where
     r = ms M.! "root"
     go :: MonkeyI -> MonkeyT
-    go (MonkeyO x o y) = Node (Op o) [go (ms M.! x), go (ms M.! y)]
-    go (MonkeyE x y) = Node Eq [go (ms M.! x), go (ms M.! y)]
-    go (MonkeyL n) = Node (Li n) []
+    go (MonkeyO x o y) = Node (O o) [go (ms M.! x), go (ms M.! y)]
+    go (MonkeyE x y) = Node E [go (ms M.! x), go (ms M.! y)]
+    go (MonkeyL n) = Node (L n) []
+    go MonkeyU = Node U []
 
-cTree :: MonkeyT -> Int
-cTree (Node (Li n) []) = n
-cTree (Node (Op o) [x, y]) = cTree x `o` cTree y
-cTree (Node (Li _) _) = error "cTree: literal at internal node"
-cTree (Node (Op _) _) = error "cTree: operation with wrong number of arguments"
-cTree (Node Eq _) = error "cTree: cannot handle equality"
+-- Part 1.
+
+cTree :: MonkeyT -> Either String Int
+cTree (Node (L n) []) = Right n
+cTree (Node (O o) [x, y]) = getOp o <$> cTree x <*> cTree y
+cTree (Node (L _) _) = Left "cTree: literal at internal node"
+cTree (Node U _) = Left "cTree: unknown literal"
+cTree (Node (O _) _) = Left "cTree: operation with wrong number of arguments"
+cTree (Node E _) = Left "cTree: cannot handle equality"
 
 -- Part 2.
 
-beTreeWith :: Int -> Monkeys -> MonkeyT
-beTreeWith n ms = t {rootLabel = Eq}
+bTree2 :: Monkeys -> MonkeyT
+bTree2 ms = bTree $ M.adjust toEq "root" $ M.insert "humn" MonkeyU ms
   where
-    t = bTree $ M.insert "humn" (MonkeyL n) ms
+    toEq (MonkeyO l _ r) = MonkeyE l r
+    toEq _ = error "bTree2: unexpected root label"
 
-eTree :: MonkeyT -> Maybe (Int, Int)
-eTree (Node Eq [x, y])
-  | l /= r = Just (l, r)
-  | otherwise = Nothing
-  where
-    l = cTree x
-    r = cTree y
-eTree (Node Eq _) = error "eTree: operation with wrong number of arguments"
-eTree _ = error "eTree: no equality at root"
+-- Get inverse; calculate left operand.
+getInvL ::
+  Op ->
+  ( -- Top operand.
+    Int ->
+    -- Right operand.
+    Int ->
+    -- Left operand.
+    Int
+  )
+getInvL Ad = (-)
+getInvL Mu = div
+getInvL Su = (+)
+getInvL Di = (*)
+
+-- Get inverse; calculate right operand.
+getInvR ::
+  Op ->
+  ( -- Top operand.
+    Int ->
+    -- Left operand.
+    Int ->
+    -- Right operand.
+    Int
+  )
+getInvR Ad = (-)
+getInvR Mu = div
+getInvR Su = \t l -> negate t + l
+getInvR Di = flip div
+
+solveTreeWith :: Int -> MonkeyT -> Either String Int
+solveTreeWith n (Node U []) = Right n
+solveTreeWith n (Node (O o) [x, y]) = case (cTree x, cTree y) of
+  (Right l, Left _) ->
+    let i = getInvR o
+        r = n `i` l
+     in solveTreeWith r y
+  (Left _, Right r) ->
+    let i = getInvL o
+        l = n `i` r
+     in solveTreeWith l x
+  (Left _, Left _) -> Left "solveTreeWith: both subtrees are unknown"
+  (Right _, Right _) -> Left "solveTreeWith: both subtrees are known"
+solveTreeWith _ _ = Left "solveTreeWith: unhandled operation"
+
+solveTree :: MonkeyT -> Either String Int
+solveTree (Node E [x, y]) = case (cTree x, cTree y) of
+  (Right l, Left _) -> solveTreeWith l y
+  (Left _, Right r) -> solveTreeWith r x
+  (Left _, Left _) -> Left "solveTree: both subtrees are unknown"
+  (Right _, Right _) -> Left "solveTree: both subtrees are known"
+solveTree (Node E _) = Left "solveTree: equality operation with wrong number of arguments"
+solveTree _ = Left "solveTree: no equality operation at root"
 
 main :: IO ()
 main = do
@@ -145,8 +204,5 @@ main = do
   -- Part 1.
   print $ cTree mt
   -- Part 2.
-  let xs = sequence [eTree $ beTreeWith n mm | n <- [0 .. 1000]]
-      ns = map fst $ fromJust xs
-      ds = zipWith (-) (tail ns) ns
-      cc = findCycle 1000 ds
-  print cc
+  let t2 = bTree2 mm
+  print $ solveTree t2

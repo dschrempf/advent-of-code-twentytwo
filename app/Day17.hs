@@ -18,7 +18,7 @@ module Main
   )
 where
 
-import Aoc.List (chop, findCycle)
+import Aoc.List (findCycle)
 import Control.Applicative (Alternative (some, (<|>)), optional)
 import Control.DeepSeq (NFData, deepseq, force)
 import Data.Attoparsec.ByteString.Char8
