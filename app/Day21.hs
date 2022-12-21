@@ -34,21 +34,27 @@ import Data.Attoparsec.ByteString.Char8
   )
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map.Strict as M
-import Data.Tree (Tree (Node))
+import Data.Maybe
+import Data.Tree (Tree (Node, rootLabel))
 
 type Name = BS.ByteString
 
 data MonkeyI
   = MonkeyO
-      { arg1 :: Name,
-        op :: Int -> Int -> Int,
-        arg2 :: Name
+      { _oarg1 :: Name,
+        _op :: Int -> Int -> Int,
+        _oarg2 :: Name
+      }
+  | MonkeyE
+      { _earg1 :: Name,
+        _earg2 :: Name
       }
   | MonkeyL Int
 
 -- For debugging.
 instance Show MonkeyI where
   show (MonkeyO a1 _ a2) = show $ a1 <> " <> " <> a2
+  show (MonkeyE a1 a2) = show $ a1 <> " == " <> a2
   show (MonkeyL n) = show n
 
 pName :: Parser Name
@@ -87,11 +93,12 @@ pInput = pMonkey `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
 type Monkeys = M.Map Name MonkeyI
 
-data MonkeyN = Op (Int -> Int -> Int) | Li Int
+data MonkeyN = Op (Int -> Int -> Int) | Eq | Li Int
 
 -- For debugging.
 instance Show MonkeyN where
   show (Op _) = "<>"
+  show Eq = "=="
   show (Li n) = show n
 
 type MonkeyT = Tree MonkeyN
@@ -101,13 +108,33 @@ bTree ms = go r
   where
     r = ms M.! "root"
     go :: MonkeyI -> MonkeyT
-    go (MonkeyL n) = Node (Li n) []
     go (MonkeyO x o y) = Node (Op o) [go (ms M.! x), go (ms M.! y)]
+    go (MonkeyE x y) = Node Eq [go (ms M.! x), go (ms M.! y)]
+    go (MonkeyL n) = Node (Li n) []
 
 cTree :: MonkeyT -> Int
 cTree (Node (Li n) []) = n
 cTree (Node (Op o) [x, y]) = cTree x `o` cTree y
-cTree _ = error "cTree: unknown operation"
+cTree (Node (Li _) _) = error "cTree: literal at internal node"
+cTree (Node (Op _) _) = error "cTree: operation with wrong number of arguments"
+cTree (Node Eq _) = error "cTree: cannot handle equality"
+
+-- Part 2.
+
+beTreeWith :: Int -> Monkeys -> MonkeyT
+beTreeWith n ms = t {rootLabel = Eq}
+  where
+    t = bTree $ M.insert "humn" (MonkeyL n) ms
+
+eTree :: MonkeyT -> Maybe (Int, Int)
+eTree (Node Eq [x, y])
+  | l /= r = Just (l, r)
+  | otherwise = Nothing
+  where
+    l = cTree x
+    r = cTree y
+eTree (Node Eq _) = error "eTree: operation with wrong number of arguments"
+eTree _ = error "eTree: no equality at root"
 
 main :: IO ()
 main = do
@@ -115,4 +142,11 @@ main = do
   let ms = either error id $ parseOnly pInput d
       mm = M.fromList ms
       mt = bTree mm
+  -- Part 1.
   print $ cTree mt
+  -- Part 2.
+  let xs = sequence [eTree $ beTreeWith n mm | n <- [0 .. 1000]]
+      ns = map fst $ fromJust xs
+      ds = zipWith (-) (tail ns) ns
+      cc = findCycle 1000 ds
+  print cc
