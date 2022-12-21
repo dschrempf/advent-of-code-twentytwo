@@ -18,7 +18,7 @@ module Main
   )
 where
 
-import Aoc.List (chop)
+import Aoc.List (chop, findCycle)
 import Control.Applicative (Alternative (some, (<|>)), optional)
 import Control.DeepSeq (NFData, deepseq, force)
 import Data.Attoparsec.ByteString.Char8
@@ -29,6 +29,7 @@ import Data.Attoparsec.ByteString.Char8
     parseOnly,
   )
 import qualified Data.ByteString.Char8 as BS
+import Data.Maybe (fromJust)
 import qualified Data.Set as S
 import GHC.Generics (Generic)
 
@@ -144,18 +145,6 @@ maxLength = 10000
 shift :: Int
 shift = 10000
 
-findCycle :: [Int] -> (Int, [Int])
-findCycle = go 1 . drop shift
-  where
-    m = 4
-    go :: Int -> [Int] -> (Int, [Int])
-    go n xs
-      | n <= maxLength =
-          let h = take n xs
-              xss = chop n $ take (m * n) xs
-           in if all (== h) xss then (n, h) else go (n + 1) xs
-      | otherwise = error "findCycle: none found"
-
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input17.txt"
@@ -169,7 +158,7 @@ main = do
   -- Part 2.
   let hs = map fm $ iterate fall f0
       ds = zipWith (-) (tail hs) hs
-      (cycleLength, cycles) = findCycle ds
+      (cycleLength, cycles) = fromJust $ findCycle maxLength $ drop shift ds
   let beginning = sum $ take shift ds
       nLeft = ix - shift
       (ns, r) = nLeft `divMod` cycleLength

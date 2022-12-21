@@ -14,6 +14,7 @@
 module Aoc.List
   ( chop,
     pairs,
+    findCycle,
   )
 where
 
@@ -30,3 +31,20 @@ chop n xs = ys : chop n zs
 pairs :: [a] -> [(a, a)]
 pairs [] = []
 pairs (x : xs) = map (x,) xs ++ pairs xs
+
+-- | Search for a cycle in a list.
+findCycle ::
+  -- | Maximum length.
+  Int ->
+  [Int] ->
+  Maybe (Int, [Int])
+findCycle maxLength = go 1
+  where
+    m = 4
+    go :: Int -> [Int] -> Maybe (Int, [Int])
+    go n xs
+      | n <= maxLength =
+          let h = take n xs
+              xss = chop n $ take (m * n) xs
+           in if all (== h) xss then Just (n, h) else go (n + 1) xs
+      | otherwise = Nothing
