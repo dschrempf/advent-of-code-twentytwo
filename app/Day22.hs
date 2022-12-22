@@ -32,7 +32,7 @@ import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
-    B,
+    B (..),
     Comp (..),
     Ix2 (..),
     Ix3,
@@ -40,14 +40,18 @@ import Data.Massiv.Array
     U (..),
     Vector,
     compute,
+    computeAs,
     findIndex,
     fromList,
     fromLists',
+    sfilter,
+    size,
     toList,
     (!),
     (!><),
   )
 import Data.Maybe (fromJust)
+import Debug.Trace
 
 data Cell = Tile | Wall | Void
   deriving (Show, Eq)
@@ -270,20 +274,23 @@ flipW3 :: W3 -> W3
 flipW3 (W3 d o p) = W3 (t `g` d) (t `g` o) p
   where
     f = cross d o
-    t = getTurn TLeft f
+    t = getTurn TRight f
     g m v = compute $ m !>< v
 
 moveW3 :: W3 -> W3
 moveW3 (W3 d o p)
   -- We are at an edge, flip the walker and move one more field to get back onto
   -- the face of the cube.
-  | isEdge p' = moveW3 $ flipW3 (W3 d o p')
+  | isEdge3D p' = moveW3 $ flipW3 (W3 d o p')
   | otherwise = W3 d o p'
   where
     [dx, dy, dz] = toList d
     (Ix3 x y z) = p
     p' = Ix3 (x + dx) (y + dy) (z + dz)
-    isEdge (Ix3 a b c) = 0 `elem` [a, b, c]
+    isEdge1D a = a == 0 || a == 5
+    isEdge3D (Ix3 a b c) =
+      let l = length $ filter (== True) $ map isEdge1D [a, b, c]
+       in l >= 2
 
 -- Position map.
 type PMap = M.Map P3 P2
@@ -358,25 +365,33 @@ fillPos (Walkers (W2 _ p2) (W3 _ _ p3)) (Fields xs pm) = Fields xs (M.insert p3 
 fillFields' :: State -> State
 fillFields' (State ws fs) = case mws' of
   Nothing -> State ws fs'
-  Just ws' -> fillFields' (State ws' fs')
+  Just ws' -> traceShow (_position $ d3wlk ws') $ fillFields' (State ws' fs')
   where
     fs' = fillPos ws fs
     mws' = moveWsOnF2 (d2fld fs) ws
 
-fillFields :: F2 -> W2 -> W3 -> Fields
-fillFields xs w2 w3 = fields $ fillFields' (State ps fs)
+fillPMap :: F2 -> W2 -> W3 -> PMap
+fillPMap xs w2 w3 = pmap $ fields $ fillFields' (State ps fs)
   where
     ps = Walkers w2 w3
     fs = Fields xs M.empty
 
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input22.txt"
+  d <- BS.readFile "inputs/input22-sample.txt"
   -- Part 1.
   let (xs, is) = either error id $ parseOnly pInput d
       x0 = findStart xs
   print $ uncurry grade $ move xs is DRight x0
   -- Part 2.
   let w2 = W2 DRight x0
-      w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 1)
-  print $ fillFields xs w2 w3
+      w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 0)
+      pm = fillPMap xs w2 w3
+  -- There should be no index pointing to 'Void'.
+  let cm = M.map (xs !) pm
+  print $ M.filter (== Void) cm
+  -- The length of the map should be the number of non-'Void' cells.
+  print $ M.size $ M.filter (/= Void) cm
+  print $ size $ computeAs B $ sfilter (/= Void) xs
+  print $ map _position $ take 17 $ iterate moveW3 w3
+  print $ map _position $ take 17 $ iterate moveW3 $ turnW3 TRight w3
