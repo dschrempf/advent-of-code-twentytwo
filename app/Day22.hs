@@ -196,11 +196,11 @@ type M = Array U Ix2 Int
 -- Position.
 type P3 = Ix3
 
-froml :: [Int] -> V
-froml = fromList Seq
+fromL :: [Int] -> V
+fromL = fromList Seq
 
-fromls :: [[Int]] -> M
-fromls = fromLists' Seq
+fromLs :: [[Int]] -> M
+fromLs = fromLists' Seq
 
 pos1 :: Turn -> Int
 pos1 TRight = 1
@@ -210,42 +210,42 @@ neg1 :: Turn -> Int
 neg1 TRight = -1
 neg1 TLeft = 1
 
-rotx :: Turn -> M
-rotx t =
-  fromls
+rotX :: Turn -> M
+rotX t =
+  fromLs
     [ [1, 0, 0],
       [0, 0, neg1 t],
       [0, pos1 t, 0]
     ]
 
-roty :: Turn -> M
-roty t =
-  fromls
+rotY :: Turn -> M
+rotY t =
+  fromLs
     [ [0, 0, pos1 t],
       [0, 1, 0],
       [neg1 t, 0, 0]
     ]
 
-rotz :: Turn -> M
-rotz t =
-  fromls
+rotZ :: Turn -> M
+rotZ t =
+  fromLs
     [ [0, neg1 t, 0],
       [pos1 t, 0, 0],
       [0, 0, 1]
     ]
 
-flipt :: Turn -> Turn
-flipt TRight = TLeft
-flipt TLeft = TRight
+flipT :: Turn -> Turn
+flipT TRight = TLeft
+flipT TLeft = TRight
 
 getTurn :: Turn -> V -> M
 getTurn t o = case toList o of
-  [1, 0, 0] -> rotx t
-  [-1, 0, 0] -> rotx $ flipt t
-  [0, 1, 0] -> roty t
-  [0, -1, 0] -> roty $ flipt t
-  [0, 0, 1] -> rotz t
-  [0, 0, -1] -> rotz $ flipt t
+  [1, 0, 0] -> rotX t
+  [-1, 0, 0] -> rotX $ flipT t
+  [0, 1, 0] -> rotY t
+  [0, -1, 0] -> rotY $ flipT t
+  [0, 0, 1] -> rotZ t
+  [0, 0, -1] -> rotZ $ flipT t
   _ -> error $ "getTurn: unknown orientation: " ++ show o
 
 data W3 = W3
@@ -261,7 +261,7 @@ turnw t (W3 d o p) = W3 d' o p
     d' = compute $ getTurn t o !>< d
 
 cross :: V -> V -> V
-cross a b = froml [a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1]
+cross a b = fromL [a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1]
   where
     [a1, a2, a3] = toList a
     [b1, b2, b3] = toList b
@@ -275,13 +275,13 @@ flipw (W3 d o p) = W3 (t `g` d) (t `g` o) p
     g m v = compute $ m !>< v
 
 w0 :: W3
-w0 = W3 (froml [1, 0, 0]) (froml [0, 0, 1]) (1 :> 1 :. 1)
+w0 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 1)
 
-movew :: W3 -> W3
-movew w@(W3 d o p)
+movew3 :: W3 -> W3
+movew3 w@(W3 d o p)
   -- We are at an edge, flip the walker and move one more field to get back onto
   -- the face of the cube.
-  | isEdge p' = movew $ flipw (W3 d o p')
+  | isEdge p' = movew3 $ flipw (W3 d o p')
   | otherwise = W3 d o p'
   where
     [dx, dy, dz] = toList d
@@ -292,9 +292,8 @@ movew w@(W3 d o p)
 -- Position map.
 type PMap = M.Map P3 P2
 
-data Positions = Positions
-  { d2dir :: D2,
-    d2pos :: P2,
+data Walkers = Walkers
+  { d2wlk :: W2,
     d3wlk :: W3
   }
 
@@ -304,40 +303,44 @@ data Fields = Fields
   }
 
 data State = State
-  { positions :: Positions,
+  { positions :: Walkers,
     fields :: Fields
   }
 
-move2d :: F2 -> D2 -> P2 -> Maybe P2
-move2d f2 d p = case f2 ! p' of
+-- Return 'Nothing' if we are at the end of the field.
+moveWsDown :: F2 -> Walkers -> Maybe Walkers
+moveWsDown xs (Walkers w2 w3) = undefined
+
+movew2 :: F2 -> W2 -> Maybe W2
+movew2 xs (W2 d p) = case xs ! p' of
   Void -> Nothing
-  _ -> Just p'
+  _ -> Just $ W2 d p'
   where
     p' = forwards d p
 
-moveps :: F2 -> Positions -> Maybe Positions
-moveps xs (Positions d p w) = do
-  p' <- move2d xs d p
-  pure $ Positions d p' $ movew w
+moveWsForward :: F2 -> Walkers -> Maybe Walkers
+moveWsForward xs (Walkers w2 w3) = do
+  w2' <- movew2 xs w2
+  let w3' = movew3 w3
+  pure $ Walkers w2' w3'
 
-fillPos :: Positions -> Fields -> Fields
-fillPos (Positions _ p2 (W3 _ _ p3)) (Fields f2 pm) = Fields f2 (M.insert p3 p2 pm)
+moveWs :: F2 -> Walkers -> Maybe Walkers
+moveWs xs ws = moveWsForward xs ws <|> moveWsDown xs ws
 
--- Return 'Nothing' if we are at the end of the field.
-moveDown :: State -> Maybe State
-moveDown (State ps fs) = undefined
+fillPos :: Walkers -> Fields -> Fields
+fillPos (Walkers (W2 _ p2) (W3 _ _ p3)) (Fields xs pm) = Fields xs (M.insert p3 p2 pm)
 
 fillFields' :: State -> State
 fillFields' (State ps fs) = undefined
   where
     fs' = fillPos ps fs
-    ps' = moveps (d2fld fs) ps
+    ps' = moveWs (d2fld fs) ps
 
-fillFields :: F2 -> P2 -> W3 -> Fields
-fillFields f2 p0 w0 = fields $ fillFields' (State ps fs)
+fillFields :: F2 -> W2 -> W3 -> Fields
+fillFields xs w2 w3 = fields $ fillFields' (State ps fs)
   where
-    ps = Positions DRight p0 w0
-    fs = Fields f2 M.empty
+    ps = Walkers w2 w3
+    fs = Fields xs M.empty
 
 main :: IO ()
 main = do
