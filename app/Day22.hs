@@ -16,7 +16,7 @@ module Main
   )
 where
 
-import Aoc.Function (nTimesStrict)
+import Aoc.Function (nTimesLazy, nTimesStrict)
 import Control.Applicative (optional, some, (<|>))
 import Data.Attoparsec.ByteString.Char8
   ( Parser,
@@ -37,7 +37,6 @@ import Data.Massiv.Array
     Ix2 (..),
     Ix3,
     IxN (..),
-    Sz (..),
     U (..),
     Vector,
     compute,
@@ -46,7 +45,6 @@ import Data.Massiv.Array
     fromLists',
     toList,
     (!),
-    (!+!),
     (!><),
   )
 import Data.Maybe (fromJust)
@@ -122,6 +120,7 @@ data W2 = W2
   { d2Dir :: D2,
     d2Pos :: P2
   }
+  deriving (Show, Eq)
 
 forwards :: D2 -> P2 -> P2
 forwards d (Ix2 i j) = case d of
@@ -255,8 +254,8 @@ data W3 = W3
   }
   deriving (Show, Eq)
 
-turnw :: Turn -> W3 -> W3
-turnw t (W3 d o p) = W3 d' o p
+turnW3 :: Turn -> W3 -> W3
+turnW3 t (W3 d o p) = W3 d' o p
   where
     d' = compute $ getTurn t o !>< d
 
@@ -267,21 +266,18 @@ cross a b = fromL [a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1]
     [b1, b2, b3] = toList b
 
 -- Flip walker over an edge.
-flipw :: W3 -> W3
-flipw (W3 d o p) = W3 (t `g` d) (t `g` o) p
+flipW3 :: W3 -> W3
+flipW3 (W3 d o p) = W3 (t `g` d) (t `g` o) p
   where
     f = cross d o
     t = getTurn TLeft f
     g m v = compute $ m !>< v
 
-w0 :: W3
-w0 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 1)
-
-movew3 :: W3 -> W3
-movew3 w@(W3 d o p)
+moveW3 :: W3 -> W3
+moveW3 (W3 d o p)
   -- We are at an edge, flip the walker and move one more field to get back onto
   -- the face of the cube.
-  | isEdge p' = movew3 $ flipw (W3 d o p')
+  | isEdge p' = moveW3 $ flipW3 (W3 d o p')
   | otherwise = W3 d o p'
   where
     [dx, dy, dz] = toList d
@@ -296,45 +292,76 @@ data Walkers = Walkers
   { d2wlk :: W2,
     d3wlk :: W3
   }
+  deriving (Show, Eq)
 
 data Fields = Fields
   { d2fld :: F2,
     pmap :: PMap
   }
+  deriving (Show, Eq)
 
 data State = State
   { positions :: Walkers,
     fields :: Fields
   }
+  deriving (Show, Eq)
 
--- Return 'Nothing' if we are at the end of the field.
-moveWsDown :: F2 -> Walkers -> Maybe Walkers
-moveWsDown xs (Walkers w2 w3) = undefined
+turnW2 :: Turn -> W2 -> W2
+turnW2 t (W2 d p) = W2 (turn t d) p
 
-movew2 :: F2 -> W2 -> Maybe W2
-movew2 xs (W2 d p) = case xs ! p' of
+moveW2 :: F2 -> W2 -> Maybe W2
+moveW2 xs (W2 d p) = case xs ! p' of
   Void -> Nothing
   _ -> Just $ W2 d p'
   where
     p' = forwards d p
 
+moveWsUntilVoid :: F2 -> Walkers -> Walkers
+moveWsUntilVoid xs ws = case moveWsForward xs ws of
+  Nothing -> ws
+  Just ws' -> moveWsUntilVoid xs ws'
+
+turnWsAround :: Walkers -> Walkers
+turnWsAround (Walkers w2 w3) = Walkers w2o w3o
+  where
+    t = TRight
+    w2o = nTimesLazy 2 (turnW2 t) w2
+    w3o = nTimesLazy 2 (turnW3 t) w3
+
+-- Return 'Nothing' if we are at the end of the field.
+moveWsDown :: F2 -> Walkers -> Maybe Walkers
+moveWsDown xs (Walkers (W2 d p) w3) = do
+  w2' <- turnW2 t <$> moveW2 xs (W2 DDown p)
+  let w3' = turnW3 t $ moveW3 $ turnW3 t w3
+  pure $ Walkers w2' w3'
+  where
+    t = case d of
+      DRight -> TRight
+      DLeft -> TLeft
+      _ -> error "moveWsDown: wrong direction"
+
 moveWsForward :: F2 -> Walkers -> Maybe Walkers
 moveWsForward xs (Walkers w2 w3) = do
-  w2' <- movew2 xs w2
-  let w3' = movew3 w3
+  w2' <- moveW2 xs w2
+  let w3' = moveW3 w3
   pure $ Walkers w2' w3'
 
-moveWs :: F2 -> Walkers -> Maybe Walkers
-moveWs xs ws = moveWsForward xs ws <|> moveWsDown xs ws
+moveWsOnF2 :: F2 -> Walkers -> Maybe Walkers
+moveWsOnF2 xs ws =
+  moveWsForward xs ws
+    <|> moveWsDown xs ws
+    <|> moveWsDown xs (moveWsUntilVoid xs $ turnWsAround ws)
 
 fillPos :: Walkers -> Fields -> Fields
 fillPos (Walkers (W2 _ p2) (W3 _ _ p3)) (Fields xs pm) = Fields xs (M.insert p3 p2 pm)
 
 fillFields' :: State -> State
-fillFields' (State ps fs) = undefined
+fillFields' (State ws fs) = case mws' of
+  Nothing -> State ws fs'
+  Just ws' -> fillFields' (State ws' fs')
   where
-    fs' = fillPos ps fs
-    ps' = moveWs (d2fld fs) ps
+    fs' = fillPos ws fs
+    mws' = moveWsOnF2 (d2fld fs) ws
 
 fillFields :: F2 -> W2 -> W3 -> Fields
 fillFields xs w2 w3 = fields $ fillFields' (State ps fs)
@@ -350,4 +377,6 @@ main = do
       x0 = findStart xs
   print $ uncurry grade $ move xs is DRight x0
   -- Part 2.
-  undefined
+  let w2 = W2 DRight x0
+      w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 1)
+  print $ fillFields xs w2 w3
