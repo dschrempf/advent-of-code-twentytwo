@@ -29,6 +29,7 @@ import Data.Attoparsec.ByteString.Char8
     sepBy1',
   )
 import qualified Data.ByteString.Char8 as BS
+import Data.List (find)
 import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
@@ -37,6 +38,7 @@ import Data.Massiv.Array
     Ix2 (..),
     Ix3,
     IxN (..),
+    Sz (..),
     U (..),
     Vector,
     compute,
@@ -47,6 +49,7 @@ import Data.Massiv.Array
     (!),
     (!><),
   )
+import qualified Data.Massiv.Array as A
 import Data.Maybe (fromJust)
 
 data Cell = Tile | Wall | Void
@@ -117,8 +120,8 @@ type P2 = Ix2
 
 -- Walker in two dimensions.
 data W2 = W2
-  { d2Dir :: D2,
-    d2Pos :: P2
+  { w2Direction :: D2,
+    w2Position :: P2
   }
   deriving (Show, Eq)
 
@@ -143,7 +146,7 @@ backwards = forwards . opposite
 -- Move backwards until finding 'Void'. We can do this since we framed the board
 -- with 'Void'.
 wrap :: F2 -> D2 -> P2 -> P2
-wrap field direction position = go position field direction position
+wrap f2 dr ps = go ps f2 dr ps
   where
     go :: P2 -> F2 -> D2 -> P2 -> P2
     go p0 xs d p = case x' of
@@ -188,6 +191,9 @@ grade d p = gd d + gp p
 
 -- Part 2.
 
+-- After thinking for a while, and since I am not going for the leaderboard, I
+-- decided to implement rotations and the lot using proper matrix algebra.
+
 type V = Vector U Int
 
 type M = Array U Ix2 Int
@@ -201,35 +207,35 @@ fromL = fromList Seq
 fromLs :: [[Int]] -> M
 fromLs = fromLists' Seq
 
-pos1 :: Turn -> Int
-pos1 TRight = 1
-pos1 TLeft = -1
+pos :: Turn -> Int
+pos TRight = 1
+pos TLeft = -1
 
-neg1 :: Turn -> Int
-neg1 TRight = -1
-neg1 TLeft = 1
+neg :: Turn -> Int
+neg TRight = -1
+neg TLeft = 1
 
 rotX :: Turn -> M
 rotX t =
   fromLs
     [ [1, 0, 0],
-      [0, 0, neg1 t],
-      [0, pos1 t, 0]
+      [0, 0, neg t],
+      [0, pos t, 0]
     ]
 
 rotY :: Turn -> M
 rotY t =
   fromLs
-    [ [0, 0, pos1 t],
+    [ [0, 0, pos t],
       [0, 1, 0],
-      [neg1 t, 0, 0]
+      [neg t, 0, 0]
     ]
 
 rotZ :: Turn -> M
 rotZ t =
   fromLs
-    [ [0, neg1 t, 0],
-      [pos1 t, 0, 0],
+    [ [0, neg t, 0],
+      [pos t, 0, 0],
       [0, 0, 1]
     ]
 
@@ -237,6 +243,7 @@ flipT :: Turn -> Turn
 flipT TRight = TLeft
 flipT TLeft = TRight
 
+-- For a given turn and an orientation, calculate the rotation matrix.
 getTurn :: Turn -> V -> M
 getTurn t o = case toList o of
   [1, 0, 0] -> rotX t
@@ -247,15 +254,17 @@ getTurn t o = case toList o of
   [0, 0, -1] -> rotZ $ flipT t
   _ -> error $ "getTurn: unknown orientation: " ++ show o
 
+-- A walker in three dimensional space.
 data W3 = W3
-  { _direction :: V,
-    _orientation :: V,
-    _position :: P3
+  { w3Direction :: V,
+    w3Orientation :: V,
+    w3Position :: P3,
+    w3CubeSize :: Int
   }
   deriving (Show, Eq)
 
 turnW3 :: Turn -> W3 -> W3
-turnW3 t (W3 d o p) = W3 d' o p
+turnW3 t (W3 d o p n) = W3 d' o p n
   where
     d' = compute $ getTurn t o !>< d
 
@@ -267,18 +276,18 @@ cross a b = fromL [a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1]
 
 -- Flip walker over an edge.
 flipW3 :: W3 -> W3
-flipW3 (W3 d o p) = W3 (t `g` d) (t `g` o) p
+flipW3 (W3 d o p n) = W3 (t `g` d) (t `g` o) p n
   where
     f = cross d o
     t = getTurn TRight f
     g m v = compute $ m !>< v
 
 moveW3 :: W3 -> W3
-moveW3 (W3 d o p)
+moveW3 (W3 d o p n)
   -- We are at an edge, flip the walker and move one more field to get back onto
   -- the face of the cube.
-  | isEdge3D p' = moveW3 $ flipW3 (W3 d o p')
-  | otherwise = W3 d o p'
+  | isEdge3D p' = moveW3 $ flipW3 (W3 d o p' n)
+  | otherwise = W3 d o p' n
   where
     [dx, dy, dz] = toList d
     (Ix3 x y z) = p
@@ -356,7 +365,7 @@ moveWsOnF2 xs ws =
     <|> moveWsDown xs (moveWsUntilVoid xs $ turnWsAround ws)
 
 fillPos :: Walkers -> Fields -> Fields
-fillPos (Walkers (W2 _ p2) (W3 _ _ p3)) (Fields xs pm) = Fields xs (M.insert p3 p2 pm)
+fillPos (Walkers (W2 _ p2) (W3 _ _ p3 _)) (Fields xs pm) = Fields xs (M.insert p3 p2 pm)
 
 fillFields' :: State -> State
 fillFields' (State ws fs) = case mws' of
@@ -378,8 +387,8 @@ move3dOne (Fields xs m) w = case x' of
   Tile -> w'
   Wall -> w
   where
-    w'@(W3 _ _ p) = moveW3 w
-    x' = xs ! (m M.! p)
+    w' = moveW3 w
+    x' = xs ! (m M.! w3Position w')
 
 move3d :: Fields -> Instructions -> W3 -> W3
 move3d f (NCons n is') w = move3d f is' $ nTimesLazy n (move3dOne f) w
@@ -395,7 +404,11 @@ main = do
   print $ uncurry grade $ move xs is DRight x0
   -- Part 2.
   let w2 = W2 DRight x0
-      w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 0)
+      (Sz1 nCells) = A.size $ A.computeAs B $ A.sfilter (/= Void) xs
+      -- Stupid way to calculate cube size (no need to take square root in
+      -- discrete decimal domain).
+      cubeSz = fromJust $ find (\n -> n * n * 6 == nCells) [1 ..]
+      w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 0) cubeSz
       pm = fillPMap xs w2 w3
   -- -- There should be no index pointing to 'Void'.
   -- let cm = M.map (xs !) pm
@@ -403,11 +416,6 @@ main = do
   -- -- The length of the map should be the number of non-'Void' cells.
   -- print $ M.size $ M.filter (/= Void) cm
   -- print $ size $ computeAs B $ sfilter (/= Void) xs
-  --
-  -- TODO: The flipping needs to know the cube size.
-  --
-  -- TODO: The cube size
-  let w3f@(W3 d o p) = move3d (Fields xs pm) is w3
-  print $ cross d o
+  let w3f = move3d (Fields xs pm) is w3
   print w3f
-  print $ pm M.! p
+  print $ pm M.! w3Position w3f
