@@ -29,7 +29,23 @@ import Data.Attoparsec.ByteString.Char8
     sepBy1',
   )
 import qualified Data.ByteString.Char8 as BS
-import Data.Massiv.Array (Array, B, Comp (..), Ix2 (..), findIndex, fromLists', (!))
+import Data.Massiv.Array
+  ( Array,
+    B,
+    Comp (..),
+    Ix2 (..),
+    U (..),
+    Vector,
+    compute,
+    findIndex,
+    fromList,
+    fromLists',
+    toList,
+    (!),
+    (!><),
+    (!><!),
+  )
+import qualified Data.Massiv.Array as A
 import Data.Maybe (fromJust)
 
 data Cell = Tile | Wall | Void
@@ -163,6 +179,140 @@ grade d p = gd d + gp p
     gp (Ix2 i j) = 1000 * i + 4 * j
 
 -- Part 2.
+
+type V = Vector U Int
+
+type M = Array U Ix2 Int
+
+froml :: [Int] -> V
+froml = fromList Seq
+
+fromls :: [[Int]] -> M
+fromls = fromLists' Seq
+
+idm :: M
+idm =
+  fromls
+    [ [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1]
+    ]
+
+ng :: Int -> Int
+ng = negate
+
+rotx :: Int -> M
+rotx 0 = idm
+rotx x =
+  fromls
+    [ [1, 0, 0],
+      [0, 0, ng x],
+      [0, x, 0]
+    ]
+
+roty :: Int -> M
+roty 0 = idm
+roty x =
+  fromls
+    [ [0, 0, x],
+      [0, 1, 0],
+      [ng x, 0, 0]
+    ]
+
+rotz :: Int -> M
+rotz 0 = idm
+rotz x =
+  fromls
+    [ [0, ng x, 0],
+      [x, 0, 0],
+      [0, 0, 1]
+    ]
+
+rot :: Int -> Int -> Int -> M
+rot x y z = rotx x !><! roty y !><! rotz z
+
+turnv :: V -> V -> V
+turnv t v = compute $ rot x y z !>< v
+  where
+    [x, y, z] = toList t
+
+turnr, turnl :: M
+turnr = rot 0 0 1
+turnl = rot 0 0 (-1)
+
+getpm :: V -> M
+getpm v = case toList v of
+  [1, 0, 0] -> rot 0 (-1) 0
+  [-1, 0, 0] -> rot 0 1 0
+  [0, 1, 0] -> rot 1 0 0
+  [0, -1, 0] -> rot (-1) 0 0
+  [0, 0, -1] -> rot (-1) (-1) (-1)
+  [0, 0, 1] -> idm
+  _ -> error "getpm: unknown vector"
+  where
+    [x, y, z] = toList v
+
+invm :: M -> M
+invm = compute . A.map negate
+
+turnw :: Turn -> Walker -> Walker
+turnw t (Walker d o) = Walker d' o
+  where
+    fw = getpm o
+    bw = invm fw
+    trn TRight = turnr
+    trn TLeft = turnl
+    d' = compute $ (bw !><! trn t !><! fw) !>< d
+
+w :: Walker
+w = Walker (froml [1, 0, 0]) (froml [0, 0, 1])
+
+data Walker = Walker
+  { direction :: V,
+    orientation :: V
+  }
+  deriving (Show, Eq)
+
+-- -- Direction in one dimension.
+-- data D1
+--   = -- Look into positive direction (indices are increasing).
+--     Pos
+--   | -- Look into negative direction (indices are decreasing).
+--     Neg
+--   deriving (Show, Eq, Ord)
+
+-- data A3 = Row | Col | Dep
+--   deriving (Show, Eq, Ord)
+
+-- -- Direction in three dimensions.
+-- data D3 = D3 {d1 :: D1, ax :: A3}
+--   deriving (Show, Eq, Ord)
+
+-- -- Turn in the given direction from a face pointing into a 'D3' around to
+-- -- another face pointing into a new 'D3'.
+-- turnFace :: Direction -> D3 -> D3
+-- -- Front.
+-- turnFace DRight (D3 Neg Dep) = D3 Pos Col
+-- turnFace DUp (D3 Neg Dep) = D3 Pos Row
+-- -- Right side.
+-- turnFace DRight (D3 Pos Col) = D3 Pos Dep
+-- turnFace DUp (D3 Pos Col) = D3 Pos Row
+-- -- Top.
+-- turnFace DRight (D3 Pos Row) = D3 Pos Col
+-- turnFace DUp (D3 Pos Row) = D3 Pos Dep
+-- -- Left side.
+-- turnFace DRight (D3 Neg Col) = D3 Neg Dep
+-- turnFace DUp (D3 Neg Col) = D3 Pos Dep
+-- -- Back.
+-- turnFace DRight (D3 Neg Row) = D3 Neg Dep
+-- turnFace DUp (D3 Neg Row) = D3 Pos Col
+-- --
+-- turnFace DRight (D3 Pos Dep) = D3 Neg Dep
+-- turnFace DUp (D3 Pos Dep) = D3 Pos Col
+
+-- type Face = Field
+
+-- type Faces = M.Map D3 Face
 
 main :: IO ()
 main = do
