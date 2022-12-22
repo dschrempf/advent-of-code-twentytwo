@@ -49,7 +49,6 @@ import Data.Massiv.Array
     (!+!),
     (!><),
   )
-import qualified Data.Massiv.Array as A
 import Data.Maybe (fromJust)
 
 data Cell = Tile | Wall | Void
@@ -113,35 +112,41 @@ pInput = do
 
 -- Part 1.
 
-type P2 = Ix2
-
-data Direction = DLeft | DDown | DRight | DUp
+data D2 = DLeft | DDown | DRight | DUp
   deriving (Show, Eq, Bounded, Enum)
 
-forwards :: Direction -> P2 -> P2
+type P2 = Ix2
+
+-- Walker in two dimensions.
+data W2 = W2
+  { d2Dir :: D2,
+    d2Pos :: P2
+  }
+
+forwards :: D2 -> P2 -> P2
 forwards d (Ix2 i j) = case d of
   DLeft -> i :. pred j
   DDown -> succ i :. j
   DRight -> i :. succ j
   DUp -> pred i :. j
 
-opposite :: Direction -> Direction
+opposite :: D2 -> D2
 opposite DLeft = DRight
 opposite DRight = DLeft
 opposite DUp = DDown
 opposite DDown = DUp
 
-backwards :: Direction -> P2 -> P2
+backwards :: D2 -> P2 -> P2
 backwards = forwards . opposite
 
 -- Dragons.
 --
 -- Move backwards until finding 'Void'. We can do this since we framed the board
 -- with 'Void'.
-wrap :: F2 -> Direction -> P2 -> P2
+wrap :: F2 -> D2 -> P2 -> P2
 wrap field direction position = go position field direction position
   where
-    go :: P2 -> F2 -> Direction -> P2 -> P2
+    go :: P2 -> F2 -> D2 -> P2 -> P2
     go p0 xs d p = case x' of
       -- Need to check if this is a wall. If so, provide the original position.
       Void -> if (xs ! p) == Wall then p0 else p
@@ -150,7 +155,7 @@ wrap field direction position = go position field direction position
         p' = backwards d p
         x' = xs ! p'
 
-moveOne :: F2 -> Direction -> P2 -> P2
+moveOne :: F2 -> D2 -> P2 -> P2
 moveOne xs d p = case x' of
   Wall -> p
   Tile -> p'
@@ -159,13 +164,13 @@ moveOne xs d p = case x' of
     p' = forwards d p
     x' = xs ! p'
 
-turn :: Turn -> Direction -> Direction
+turn :: Turn -> D2 -> D2
 turn TRight DLeft = DUp
 turn TRight d = pred d
 turn TLeft DUp = DLeft
 turn TLeft d = succ d
 
-move :: F2 -> Instructions -> Direction -> P2 -> (Direction, P2)
+move :: F2 -> Instructions -> D2 -> P2 -> (D2, P2)
 move xs (NCons n is') d p = move xs is' d $ nTimesStrict n (moveOne xs d) p
 move xs (TCons t is') d p = move xs is' (turn t d) p
 move _ Nil d p = (d, p)
@@ -173,7 +178,7 @@ move _ Nil d p = (d, p)
 findStart :: F2 -> P2
 findStart = fromJust . findIndex (== Tile)
 
-grade :: Direction -> P2 -> Int
+grade :: D2 -> P2 -> Int
 grade d p = gd d + gp p
   where
     gd DRight = 0
@@ -243,15 +248,15 @@ getTurn t o = case toList o of
   [0, 0, -1] -> rotz $ flipt t
   _ -> error $ "getTurn: unknown orientation: " ++ show o
 
-data Walker = Walker
+data W3 = W3
   { _direction :: V,
     _orientation :: V,
     _position :: P3
   }
   deriving (Show, Eq)
 
-turnw :: Turn -> Walker -> Walker
-turnw t (Walker d o p) = Walker d' o p
+turnw :: Turn -> W3 -> W3
+turnw t (W3 d o p) = W3 d' o p
   where
     d' = compute $ getTurn t o !>< d
 
@@ -262,65 +267,77 @@ cross a b = froml [a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1]
     [b1, b2, b3] = toList b
 
 -- Flip walker over an edge.
-flipw :: Walker -> Walker
-flipw (Walker d o p) = Walker (t `g` d) (t `g` o) p
+flipw :: W3 -> W3
+flipw (W3 d o p) = W3 (t `g` d) (t `g` o) p
   where
     f = cross d o
     t = getTurn TLeft f
     g m v = compute $ m !>< v
 
-w0 :: Walker
-w0 = Walker (froml [1, 0, 0]) (froml [0, 0, 1]) (1 :> 1 :. 1)
+w0 :: W3
+w0 = W3 (froml [1, 0, 0]) (froml [0, 0, 1]) (1 :> 1 :. 1)
 
-movew :: Walker -> Walker
-movew w@(Walker d o p)
+movew :: W3 -> W3
+movew w@(W3 d o p)
   -- We are at an edge, flip the walker and move one more field to get back onto
   -- the face of the cube.
-  | isEdge p' = movew $ flipw (Walker d o p')
-  | otherwise = Walker d o p'
+  | isEdge p' = movew $ flipw (W3 d o p')
+  | otherwise = W3 d o p'
   where
     [dx, dy, dz] = toList d
     (Ix3 x y z) = p
     p' = Ix3 (x + dx) (y + dy) (z + dz)
     isEdge (Ix3 a b c) = 0 `elem` [a, b, c]
 
-type F3 = Array B Ix3 Cell
-
 -- Position map.
 type PMap = M.Map P3 P2
 
 data Positions = Positions
-  { d2dir :: Direction,
+  { d2dir :: D2,
     d2pos :: P2,
-    d3wlk :: Walker
+    d3wlk :: W3
   }
 
 data Fields = Fields
   { d2fld :: F2,
-    d3fld :: F3,
     pmap :: PMap
   }
 
-data State = State Positions Fields
+data State = State
+  { positions :: Positions,
+    fields :: Fields
+  }
 
-move2d :: F2 -> Direction -> P2 -> Maybe P2
-move2d xs d p = case xs ! p' of
+move2d :: F2 -> D2 -> P2 -> Maybe P2
+move2d f2 d p = case f2 ! p' of
   Void -> Nothing
   _ -> Just p'
   where
     p' = forwards d p
 
-moves :: F2 -> Positions -> Maybe Positions
-moves xs (Positions d p w) = do
+moveps :: F2 -> Positions -> Maybe Positions
+moveps xs (Positions d p w) = do
   p' <- move2d xs d p
   pure $ Positions d p' $ movew w
 
-fillF3 :: F2 -> P2 -> Walker -> Fields
-fillF3 f2 p0 w0 = undefined
+fillPos :: Positions -> Fields -> Fields
+fillPos (Positions _ p2 (W3 _ _ p3)) (Fields f2 pm) = Fields f2 (M.insert p3 p2 pm)
+
+-- Return 'Nothing' if we are at the end of the field.
+moveDown :: State -> Maybe State
+moveDown (State ps fs) = undefined
+
+fillFields' :: State -> State
+fillFields' (State ps fs) = undefined
   where
-    f3 = A.replicate Seq (Sz (52 :> 52 :. 52)) Void
+    fs' = fillPos ps fs
+    ps' = moveps (d2fld fs) ps
+
+fillFields :: F2 -> P2 -> W3 -> Fields
+fillFields f2 p0 w0 = fields $ fillFields' (State ps fs)
+  where
     ps = Positions DRight p0 w0
-    fs = Fields f2 f3 M.empty
+    fs = Fields f2 M.empty
 
 main :: IO ()
 main = do
