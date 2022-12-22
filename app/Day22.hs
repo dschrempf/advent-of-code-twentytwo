@@ -118,7 +118,7 @@ data D2 = DLeft | DDown | DRight | DUp
 
 type P2 = Ix2
 
--- Walker in two dimensions.
+-- Walker on two-dimensional field.
 data W2 = W2
   { w2Direction :: D2,
     w2Position :: P2
@@ -254,7 +254,7 @@ getTurn t o = case toList o of
   [0, 0, -1] -> rotZ $ flipT t
   _ -> error $ "getTurn: unknown orientation: " ++ show o
 
--- A walker in three dimensional space.
+-- A walker in three-dimensional space.
 data W3 = W3
   { w3Direction :: V,
     w3Orientation :: V,
@@ -297,18 +297,19 @@ moveW3 (W3 d o p n)
       let l = length $ filter (== True) $ map isEdge1D [a, b, c]
        in l >= 2
 
--- Position map.
+-- Position map from positions in three dimensional cube to positions on the
+-- two-dimensional field.
 type PMap = M.Map P3 P2
 
 data Walkers = Walkers
-  { d2wlk :: W2,
-    d3wlk :: W3
+  { d2Walker :: W2,
+    d3Walker :: W3
   }
   deriving (Show, Eq)
 
 data Fields = Fields
-  { d2fld :: F2,
-    pmap :: PMap
+  { d2Field :: F2,
+    pMap :: PMap
   }
   deriving (Show, Eq)
 
@@ -373,17 +374,18 @@ fillFields' (State ws fs) = case mws' of
   Just ws' -> fillFields' (State ws' fs')
   where
     fs' = fillPos ws fs
-    mws' = moveWsOnF2 (d2fld fs) ws
+    mws' = moveWsOnF2 (d2Field fs) ws
 
+-- Simultaneously walk along the field and the cube and log positions.
 fillPMap :: F2 -> W2 -> W3 -> PMap
-fillPMap xs w2 w3 = pmap $ fields $ fillFields' (State ps fs)
+fillPMap xs w2 w3 = pMap $ fields $ fillFields' (State ps fs)
   where
     ps = Walkers w2 w3
     fs = Fields xs M.empty
 
 move3dOne :: Fields -> W3 -> W3
 move3dOne (Fields xs m) w = case x' of
-  Void -> error "move3dOne: walked into void"
+  Void -> error "move3dOne: walked into 'Void'"
   Tile -> w'
   Wall -> w
   where
@@ -403,12 +405,15 @@ main = do
       x0 = findStart xs
   print $ uncurry grade $ move xs is DRight x0
   -- Part 2.
-  let w2 = W2 DRight x0
+  let -- Walker on two-dimensional field.
+      w2 = W2 DRight x0
       (Sz1 nCells) = A.size $ A.computeAs B $ A.sfilter (/= Void) xs
       -- Stupid way to calculate cube size (no need to take square root in
       -- discrete decimal domain).
       cubeSz = fromJust $ find (\n -> n * n * 6 == nCells) [1 ..]
+      -- Walker on three-dimensional cube.
       w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 0) cubeSz
+      -- Calculate the position map.
       pm = fillPMap xs w2 w3
   -- -- There should be no index pointing to 'Void'.
   -- let cm = M.map (xs !) pm
@@ -416,6 +421,7 @@ main = do
   -- -- The length of the map should be the number of non-'Void' cells.
   -- print $ M.size $ M.filter (/= Void) cm
   -- print $ size $ computeAs B $ sfilter (/= Void) xs
-  let w3f = move3d (Fields xs pm) is w3
-  print w3f
+  let -- End position of walker on three-dimensional cube.
+      w3f = move3d (Fields xs pm) is w3
+  -- Convert the position back to the two-dimensional field.
   print $ pm M.! w3Position w3f
