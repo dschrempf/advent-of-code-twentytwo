@@ -40,18 +40,14 @@ import Data.Massiv.Array
     U (..),
     Vector,
     compute,
-    computeAs,
     findIndex,
     fromList,
     fromLists',
-    sfilter,
-    size,
     toList,
     (!),
     (!><),
   )
 import Data.Maybe (fromJust)
-import Debug.Trace
 
 data Cell = Tile | Wall | Void
   deriving (Show, Eq)
@@ -287,7 +283,7 @@ moveW3 (W3 d o p)
     [dx, dy, dz] = toList d
     (Ix3 x y z) = p
     p' = Ix3 (x + dx) (y + dy) (z + dz)
-    isEdge1D a = a == 0 || a == 5
+    isEdge1D a = a == 0 || a == 51
     isEdge3D (Ix3 a b c) =
       let l = length $ filter (== True) $ map isEdge1D [a, b, c]
        in l >= 2
@@ -338,9 +334,9 @@ turnWsAround (Walkers w2 w3) = Walkers w2o w3o
 -- Return 'Nothing' if we are at the end of the field.
 moveWsDown :: F2 -> Walkers -> Maybe Walkers
 moveWsDown xs (Walkers (W2 d p) w3) = do
-  w2' <- turnW2 t <$> moveW2 xs (W2 DDown p)
-  let w3' = turnW3 t $ moveW3 $ turnW3 t w3
-  pure $ Walkers w2' w3'
+  w2' <- turnW2 (flipT t) <$> moveW2 xs (W2 DDown p)
+  let w3' = turnW3 (flipT t) $ moveW3 $ turnW3 t w3
+  pure $ turnWsAround $ moveWsUntilVoid xs $ Walkers w2' w3'
   where
     t = case d of
       DRight -> TRight
@@ -365,7 +361,7 @@ fillPos (Walkers (W2 _ p2) (W3 _ _ p3)) (Fields xs pm) = Fields xs (M.insert p3 
 fillFields' :: State -> State
 fillFields' (State ws fs) = case mws' of
   Nothing -> State ws fs'
-  Just ws' -> traceShow (_position $ d3wlk ws') $ fillFields' (State ws' fs')
+  Just ws' -> fillFields' (State ws' fs')
   where
     fs' = fillPos ws fs
     mws' = moveWsOnF2 (d2fld fs) ws
@@ -376,9 +372,23 @@ fillPMap xs w2 w3 = pmap $ fields $ fillFields' (State ps fs)
     ps = Walkers w2 w3
     fs = Fields xs M.empty
 
+move3dOne :: Fields -> W3 -> W3
+move3dOne (Fields xs m) w = case x' of
+  Void -> error "move3dOne: walked into void"
+  Tile -> w'
+  Wall -> w
+  where
+    w'@(W3 _ _ p) = moveW3 w
+    x' = xs ! (m M.! p)
+
+move3d :: Fields -> Instructions -> W3 -> W3
+move3d f (NCons n is') w = move3d f is' $ nTimesLazy n (move3dOne f) w
+move3d f (TCons t is') w = move3d f is' $ turnW3 t w
+move3d _ Nil w = w
+
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input22-sample.txt"
+  d <- BS.readFile "inputs/input22.txt"
   -- Part 1.
   let (xs, is) = either error id $ parseOnly pInput d
       x0 = findStart xs
@@ -387,11 +397,17 @@ main = do
   let w2 = W2 DRight x0
       w3 = W3 (fromL [1, 0, 0]) (fromL [0, 0, 1]) (1 :> 1 :. 0)
       pm = fillPMap xs w2 w3
-  -- There should be no index pointing to 'Void'.
-  let cm = M.map (xs !) pm
-  print $ M.filter (== Void) cm
-  -- The length of the map should be the number of non-'Void' cells.
-  print $ M.size $ M.filter (/= Void) cm
-  print $ size $ computeAs B $ sfilter (/= Void) xs
-  print $ map _position $ take 17 $ iterate moveW3 w3
-  print $ map _position $ take 17 $ iterate moveW3 $ turnW3 TRight w3
+  -- -- There should be no index pointing to 'Void'.
+  -- let cm = M.map (xs !) pm
+  -- print $ M.filter (== Void) cm
+  -- -- The length of the map should be the number of non-'Void' cells.
+  -- print $ M.size $ M.filter (/= Void) cm
+  -- print $ size $ computeAs B $ sfilter (/= Void) xs
+  --
+  -- TODO: The flipping needs to know the cube size.
+  --
+  -- TODO: The cube size
+  let w3f@(W3 d o p) = move3d (Fields xs pm) is w3
+  print $ cross d o
+  print w3f
+  print $ pm M.! p
