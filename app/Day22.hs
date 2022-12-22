@@ -397,6 +397,19 @@ move3d f (NCons n is') w = move3d f is' $ nTimesLazy n (move3dOne f) w
 move3d f (TCons t is') w = move3d f is' $ turnW3 t w
 move3d _ Nil w = w
 
+getDirection :: PMap -> W3 -> D2
+getDirection m w
+  | r + 1 == r' = DDown
+  | r - 1 == r' = DUp
+  | c + 1 == c' = DRight
+  | c - 1 == c' = DLeft
+  | otherwise = error "getDirection: could not find direction"
+  where
+    p3 = w3Position w
+    p3' = w3Position $ moveW3 w
+    (Ix2 r c) = m M.! p3
+    (Ix2 r' c') = m M.! p3'
+
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input22.txt"
@@ -422,6 +435,8 @@ main = do
   -- print $ M.size $ M.filter (/= Void) cm
   -- print $ size $ computeAs B $ sfilter (/= Void) xs
   let -- End position of walker on three-dimensional cube.
-      w3f = move3d (Fields xs pm) is w3
-  -- Convert the position back to the two-dimensional field.
-  print $ pm M.! w3Position w3f
+      w3' = move3d (Fields xs pm) is w3
+      -- Convert the direction and position back to the two-dimensional field.
+      dr = getDirection pm w3'
+      p2' = pm M.! w3Position w3'
+  print $ grade dr p2'
