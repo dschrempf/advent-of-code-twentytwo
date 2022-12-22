@@ -29,11 +29,15 @@ import Data.Attoparsec.ByteString.Char8
     sepBy1',
   )
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
     B,
     Comp (..),
     Ix2 (..),
+    Ix3,
+    IxN (..),
+    Sz (..),
     U (..),
     Vector,
     compute,
@@ -58,20 +62,20 @@ pCell = tile <|> wall <|> void
     wall = Wall <$ char '#'
     void = Void <$ char ' '
 
-type Field = Array B Ix2 Cell
+type F2 = Array B Ix2 Cell
 
 pLine :: Parser [Cell]
 pLine = some pCell
 
 -- Also, add a 'Void' frame; see 'wrap'.
-toField :: [[Cell]] -> Field
+toField :: [[Cell]] -> F2
 toField xs = fromLists' Seq $ frameLine : map elongate xs ++ [frameLine]
   where
     maxLength = maximum $ map length xs
     elongate ys = Void : ys ++ replicate (maxLength + 1 - length ys) Void
     frameLine = replicate (maxLength + 2) Void
 
-pField :: Parser Field
+pField :: Parser F2
 pField = toField <$> pLine `sepBy1'` endOfLine
 
 data Turn = TRight | TLeft
@@ -98,7 +102,7 @@ pTurnIs = TCons <$> pTurn <*> pMovementIs <|> pEndIs
 pEndIs :: Parser Instructions
 pEndIs = Nil <$ endOfLine
 
-pInput :: Parser (Field, Instructions)
+pInput :: Parser (F2, Instructions)
 pInput = do
   xs <- pField
   _ <- count 2 endOfLine
@@ -109,12 +113,12 @@ pInput = do
 
 -- Part 1.
 
-type Position = Ix2
+type P2 = Ix2
 
 data Direction = DLeft | DDown | DRight | DUp
   deriving (Show, Eq, Bounded, Enum)
 
-forwards :: Direction -> Position -> Position
+forwards :: Direction -> P2 -> P2
 forwards d (Ix2 i j) = case d of
   DLeft -> i :. pred j
   DDown -> succ i :. j
@@ -127,17 +131,17 @@ opposite DRight = DLeft
 opposite DUp = DDown
 opposite DDown = DUp
 
-backwards :: Direction -> Position -> Position
+backwards :: Direction -> P2 -> P2
 backwards = forwards . opposite
 
 -- Dragons.
 --
 -- Move backwards until finding 'Void'. We can do this since we framed the board
 -- with 'Void'.
-wrap :: Field -> Direction -> Position -> Position
+wrap :: F2 -> Direction -> P2 -> P2
 wrap field direction position = go position field direction position
   where
-    go :: Position -> Field -> Direction -> Position -> Position
+    go :: P2 -> F2 -> Direction -> P2 -> P2
     go p0 xs d p = case x' of
       -- Need to check if this is a wall. If so, provide the original position.
       Void -> if (xs ! p) == Wall then p0 else p
@@ -146,7 +150,7 @@ wrap field direction position = go position field direction position
         p' = backwards d p
         x' = xs ! p'
 
-moveOne :: Field -> Direction -> Position -> Position
+moveOne :: F2 -> Direction -> P2 -> P2
 moveOne xs d p = case x' of
   Wall -> p
   Tile -> p'
@@ -161,15 +165,15 @@ turn TRight d = pred d
 turn TLeft DUp = DLeft
 turn TLeft d = succ d
 
-move :: Field -> Instructions -> Direction -> Position -> (Direction, Position)
+move :: F2 -> Instructions -> Direction -> P2 -> (Direction, P2)
 move xs (NCons n is') d p = move xs is' d $ nTimesStrict n (moveOne xs d) p
 move xs (TCons t is') d p = move xs is' (turn t d) p
 move _ Nil d p = (d, p)
 
-findStart :: Field -> Position
+findStart :: F2 -> P2
 findStart = fromJust . findIndex (== Tile)
 
-grade :: Direction -> Position -> Int
+grade :: Direction -> P2 -> Int
 grade d p = gd d + gp p
   where
     gd DRight = 0
@@ -185,7 +189,7 @@ type V = Vector U Int
 type M = Array U Ix2 Int
 
 -- Position.
-type P = V
+type P3 = Ix3
 
 froml :: [Int] -> V
 froml = fromList Seq
@@ -241,12 +245,13 @@ getTurn t o = case toList o of
 
 data Walker = Walker
   { _direction :: V,
-    _orientation :: V
+    _orientation :: V,
+    _position :: P3
   }
   deriving (Show, Eq)
 
 turnw :: Turn -> Walker -> Walker
-turnw t (Walker d o) = Walker d' o
+turnw t (Walker d o p) = Walker d' o p
   where
     d' = compute $ getTurn t o !>< d
 
@@ -258,17 +263,64 @@ cross a b = froml [a2 * b3 - a3 * b2, a3 * b1 - a1 * b3, a1 * b2 - a2 * b1]
 
 -- Flip walker over an edge.
 flipw :: Walker -> Walker
-flipw (Walker d o) = Walker (t `g` d) (t `g` o)
+flipw (Walker d o p) = Walker (t `g` d) (t `g` o) p
   where
     f = cross d o
     t = getTurn TLeft f
     g m v = compute $ m !>< v
 
-w :: Walker
-w = Walker (froml [1, 0, 0]) (froml [0, 0, 1])
+w0 :: Walker
+w0 = Walker (froml [1, 0, 0]) (froml [0, 0, 1]) (1 :> 1 :. 1)
 
-movew :: Walker -> P -> P
-movew (Walker d _) p = p !+! d
+movew :: Walker -> Walker
+movew w@(Walker d o p)
+  -- We are at an edge, flip the walker and move one more field to get back onto
+  -- the face of the cube.
+  | isEdge p' = movew $ flipw (Walker d o p')
+  | otherwise = Walker d o p'
+  where
+    [dx, dy, dz] = toList d
+    (Ix3 x y z) = p
+    p' = Ix3 (x + dx) (y + dy) (z + dz)
+    isEdge (Ix3 a b c) = 0 `elem` [a, b, c]
+
+type F3 = Array B Ix3 Cell
+
+-- Position map.
+type PMap = M.Map P3 P2
+
+data Positions = Positions
+  { d2dir :: Direction,
+    d2pos :: P2,
+    d3wlk :: Walker
+  }
+
+data Fields = Fields
+  { d2fld :: F2,
+    d3fld :: F3,
+    pmap :: PMap
+  }
+
+data State = State Positions Fields
+
+move2d :: F2 -> Direction -> P2 -> Maybe P2
+move2d xs d p = case xs ! p' of
+  Void -> Nothing
+  _ -> Just p'
+  where
+    p' = forwards d p
+
+moves :: F2 -> Positions -> Maybe Positions
+moves xs (Positions d p w) = do
+  p' <- move2d xs d p
+  pure $ Positions d p' $ movew w
+
+fillF3 :: F2 -> P2 -> Walker -> Fields
+fillF3 f2 p0 w0 = undefined
+  where
+    f3 = A.replicate Seq (Sz (52 :> 52 :. 52)) Void
+    ps = Positions DRight p0 w0
+    fs = Fields f2 f3 M.empty
 
 main :: IO ()
 main = do

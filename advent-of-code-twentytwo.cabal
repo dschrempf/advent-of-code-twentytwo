@@ -363,6 +363,7 @@ executable day22
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
+    , containers
     , massiv
 
 executable day23
