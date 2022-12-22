@@ -91,6 +91,8 @@ pInput = do
   _ <- endOfInput
   pure (xs, is)
 
+-- Part 1.
+
 type Position = Ix2
 
 data Direction = DLeft | DDown | DRight | DUp
@@ -160,9 +162,14 @@ grade d p = gd d + gp p
     gd DUp = 3
     gp (Ix2 i j) = 1000 * i + 4 * j
 
+-- Part 2.
+
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input22.txt"
+  -- Part 1.
   let (xs, is) = either error id $ parseOnly pInput d
       x0 = findStart xs
   print $ uncurry grade $ move xs is DRight x0
+  -- Part 2.
+  undefined
