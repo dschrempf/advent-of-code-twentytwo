@@ -16,6 +16,7 @@ module Main
   )
 where
 
+import Aoc.Function (nTimesStrict)
 import Control.Applicative (optional, some, (<|>))
 import Data.Attoparsec.ByteString.Char8
   ( Parser,
@@ -28,7 +29,8 @@ import Data.Attoparsec.ByteString.Char8
     sepBy1',
   )
 import qualified Data.ByteString.Char8 as BS
-import Data.Massiv.Array (Array, B, Comp (..), Ix2 (..), fromLists', (!))
+import Data.Massiv.Array (Array, B, Comp (..), Ix2 (..), findIndex, fromLists', (!))
+import Data.Maybe (fromJust)
 
 data Cell = Tile | Wall | Void
   deriving (Show, Eq)
@@ -82,12 +84,12 @@ pEndIs = Nil <$ endOfLine
 
 pInput :: Parser (Field, Instructions)
 pInput = do
-  fd <- pField
+  xs <- pField
   _ <- count 2 endOfLine
   is <- pInstructions
   _ <- optional endOfLine
   _ <- endOfInput
-  pure (fd, is)
+  pure (xs, is)
 
 type Position = Ix2
 
@@ -115,12 +117,16 @@ backwards = forwards . opposite
 -- Move backwards until finding 'Void'. We can do this since we framed the board
 -- with 'Void'.
 wrap :: Field -> Direction -> Position -> Position
-wrap xs d p = case x' of
-  Void -> p
-  _ -> wrap xs d p'
+wrap field direction position = go position field direction position
   where
-    p' = backwards d p
-    x' = xs ! p'
+    go :: Position -> Field -> Direction -> Position -> Position
+    go p0 xs d p = case x' of
+      -- Need to check if this is a wall. If so, provide the original position.
+      Void -> if (xs ! p) == Wall then p0 else p
+      _ -> go p0 xs d p'
+      where
+        p' = backwards d p
+        x' = xs ! p'
 
 moveOne :: Field -> Direction -> Position -> Position
 moveOne xs d p = case x' of
@@ -137,9 +143,26 @@ turn TRight d = pred d
 turn TLeft DUp = DLeft
 turn TLeft d = succ d
 
+move :: Field -> Instructions -> Direction -> Position -> (Direction, Position)
+move xs (NCons n is') d p = move xs is' d $ nTimesStrict n (moveOne xs d) p
+move xs (TCons t is') d p = move xs is' (turn t d) p
+move _ Nil d p = (d, p)
+
+findStart :: Field -> Position
+findStart = fromJust . findIndex (== Tile)
+
+grade :: Direction -> Position -> Int
+grade d p = gd d + gp p
+  where
+    gd DRight = 0
+    gd DDown = 1
+    gd DLeft = 2
+    gd DUp = 3
+    gp (Ix2 i j) = 1000 * i + 4 * j
+
 main :: IO ()
 main = do
-  d <- BS.readFile "inputs/input22-sample.txt"
-  let (fd, is) = either error id $ parseOnly pInput d
-  print fd
-  print is
+  d <- BS.readFile "inputs/input22.txt"
+  let (xs, is) = either error id $ parseOnly pInput d
+      x0 = findStart xs
+  print $ uncurry grade $ move xs is DRight x0
