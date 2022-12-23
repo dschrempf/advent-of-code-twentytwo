@@ -19,6 +19,7 @@ where
 import Control.Applicative
 import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
+import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
     B (..),
@@ -104,6 +105,17 @@ resize xs
   | n < 3 = enlarge 10 xs
   where
     n = nRowsWithoutElf xs
+
+data Direction = North | South | West | East
+
+directionCheckIndices :: Ix2 -> Direction -> [Ix2]
+directionCheckIndices (Ix2 r c) North = [Ix2 (pred r) c' | c' <- [pred c, c, succ c]]
+directionCheckIndices (Ix2 r c) South = [Ix2 (succ r) c' | c' <- [pred c, c, succ c]]
+directionCheckIndices (Ix2 r c) West = [Ix2 r' (pred c) | r' <- [pred r, r, succ r]]
+directionCheckIndices (Ix2 r c) East = [Ix2 r' (succ c) | r' <- [pred r, r, succ r]]
+
+-- Map from source to destination positions.
+type Moves = M.Map Ix2 Ix2
 
 main :: IO ()
 main = do
