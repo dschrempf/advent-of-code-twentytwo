@@ -17,8 +17,11 @@ module Main
 where
 
 import Control.Applicative
+import Control.Monad.ST (runST)
 import Data.Attoparsec.ByteString.Char8
+import Data.Bifunctor
 import qualified Data.ByteString.Char8 as BS
+import Data.Foldable
 import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
@@ -26,11 +29,15 @@ import Data.Massiv.Array
     Comp (..),
     D,
     Ix2 (..),
+    MArray,
+    PrimMonad (..),
     Sz (..),
+    (!),
     (!>),
     (<!),
   )
 import qualified Data.Massiv.Array as A
+import Data.Maybe
 
 data Tile = Elf | Ground
   deriving (Show, Eq)
@@ -54,10 +61,11 @@ isGround Ground = True
 
 type Field = Array B Ix2 Tile
 
-type FieldD = Array D Ix2 Tile
+-- TODO.
+-- type FieldD = Array D Ix2 Tile
 
 pField :: Parser Field
-pField = A.fromLists' Seq <$> some pTile `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
+pField = A.fromLists' Par <$> some pTile `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
 showField :: Field -> String
 showField = unlines . map (map toChar) . A.toLists
@@ -94,32 +102,75 @@ enlarge :: Int -> Field -> Field
 enlarge n xs = A.compute $ A.concat' 2 [rows, xsCols, rows]
   where
     (Sz2 r c) = A.size xs
-    cols = A.replicate Seq (Sz2 r n) Ground
-    rows = A.replicate Seq (Sz2 n (c + 2 * n)) Ground
+    cols = A.replicate Par (Sz2 r n) Ground
+    rows = A.replicate Par (Sz2 n (c + 2 * n)) Ground
     xsCols = A.computeAs B $ A.concat' 1 [cols, xs, cols]
 
 -- Resize the field such that there is enough space for elves to move around.
 resize :: Field -> Field
 resize xs
-  | n > 25 = shrink 15 xs
-  | n < 3 = enlarge 10 xs
+  -- Ensure we have a frame of 11 ground fields.
+  | n < 11 = enlarge (11 - n) xs
+  -- Remove unnecessarily large frames, and reduce frame to 15 fields.
+  | n > 20 = shrink (n - 20 + 5) xs
+  | otherwise = xs
   where
     n = nRowsWithoutElf xs
 
 data Direction = North | South | West | East
 
-directionCheckIndices :: Ix2 -> Direction -> [Ix2]
-directionCheckIndices (Ix2 r c) North = [Ix2 (pred r) c' | c' <- [pred c, c, succ c]]
-directionCheckIndices (Ix2 r c) South = [Ix2 (succ r) c' | c' <- [pred c, c, succ c]]
-directionCheckIndices (Ix2 r c) West = [Ix2 r' (pred c) | r' <- [pred r, r, succ r]]
-directionCheckIndices (Ix2 r c) East = [Ix2 r' (succ c) | r' <- [pred r, r, succ r]]
+directionGetIxs :: Ix2 -> Direction -> [Ix2]
+directionGetIxs (Ix2 r c) d = case d of
+  North -> [Ix2 (pred r) c' | c' <- [pred c, c, succ c]]
+  South -> [Ix2 (succ r) c' | c' <- [pred c, c, succ c]]
+  West -> [Ix2 r' (pred c) | r' <- [pred r, r, succ r]]
+  East -> [Ix2 r' (succ c) | r' <- [pred r, r, succ r]]
 
--- Map from source to destination positions.
-type Moves = M.Map Ix2 Ix2
+directionGetIx' :: Ix2 -> Direction -> Ix2
+directionGetIx' (Ix2 r c) d = case d of
+  North -> Ix2 (pred r) c
+  South -> Ix2 (succ r) c
+  West -> Ix2 r (pred c)
+  East -> Ix2 r (succ c)
+
+-- Map from destination to source positions.
+type Moves = M.Map Ix2 (Maybe Ix2)
+
+lockInMoves :: Direction -> Field -> Moves
+lockInMoves d xs = A.ifoldlS f M.empty xs
+  where
+    f m _ Ground = m
+    f m p Elf =
+      if all isGround [xs ! p' | p' <- directionGetIxs p d]
+        then M.alter (Just . ins p) (directionGetIx' p d) m
+        else m
+    ins x Nothing = Just x
+    ins _ _ = Nothing
+
+type FieldM m = MArray (PrimState m) B Ix2 Tile
+
+moveElf :: PrimMonad m => FieldM m -> (Ix2, Ix2) -> m (FieldM m)
+moveElf = undefined
+
+move :: Moves -> Field -> Field
+move mvs xs = runST $ do
+  a <- A.thawS xs
+  _ <- foldlM moveElf a mvs'
+  A.freezeS a
+  where
+    -- NOTE: Ugly, but well.
+    mvs' = map (second fromJust) $ filter (isJust . snd) $ M.toList mvs
+
+rnd :: Direction -> Field -> Field
+rnd d xs = undefined
+  where
+    mvs = lockInMoves d xs
 
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input23-sample.txt"
-  let f = either error id $ parseOnly pField d
-  putStrLn $ showField $ resize f
-  print $ nRowsWithoutElf f
+  let xs = resize $ either error id $ parseOnly pField d
+  putStrLn $ showField xs
+  print $ lockInMoves North xs
+
+-- print $ nRowsWithoutElf xs
