@@ -21,9 +21,13 @@ import Data.Attoparsec.ByteString.Char8
 import qualified Data.ByteString.Char8 as BS
 import Data.Massiv.Array
   ( Array,
-    B,
+    B (..),
     Comp (..),
-    Ix2,
+    D,
+    Ix2 (..),
+    Sz (..),
+    (!>),
+    (<!),
   )
 import qualified Data.Massiv.Array as A
 
@@ -49,14 +53,61 @@ isGround Ground = True
 
 type Field = Array B Ix2 Tile
 
+type FieldD = Array D Ix2 Tile
+
 pField :: Parser Field
 pField = A.fromLists' Seq <$> some pTile `sepBy1'` endOfLine <* optional endOfLine <* endOfInput
 
 showField :: Field -> String
 showField = unlines . map (map toChar) . A.toLists
 
+-- Does the field need to be resized? Also useful to find the final, smallest
+-- rectangle.
+nRowsWithoutElf :: Field -> Int
+nRowsWithoutElf xs = go 0
+  where
+    (Sz2 rows cols) = A.size xs
+    rowsH = rows `div` 2
+    colsH = cols `div` 2
+    go n
+      | n < rowsH && n < colsH =
+          if any isElf nRow
+            || any isElf sRow
+            || any isElf wCol
+            || any isElf eCol
+            then n
+            else go $ succ n
+      | otherwise = pred n
+      where
+        nRow = xs !> 0
+        sRow = xs !> pred rows
+        wCol = xs <! 0
+        eCol = xs <! pred cols
+
+shrink :: Int -> Field -> Field
+shrink n xs = A.compute $ A.extractFromTo' (Ix2 n n) (Ix2 (r - n) (c - n)) xs
+  where
+    (Sz2 r c) = A.size xs
+
+enlarge :: Int -> Field -> Field
+enlarge n xs = A.compute $ A.concat' 2 [rows, xsCols, rows]
+  where
+    (Sz2 r c) = A.size xs
+    cols = A.replicate Seq (Sz2 r n) Ground
+    rows = A.replicate Seq (Sz2 n (c + 2 * n)) Ground
+    xsCols = A.computeAs B $ A.concat' 1 [cols, xs, cols]
+
+-- Resize the field such that there is enough space for elves to move around.
+resize :: Field -> Field
+resize xs
+  | n > 25 = shrink 15 xs
+  | n < 3 = enlarge 10 xs
+  where
+    n = nRowsWithoutElf xs
+
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input23-sample.txt"
   let f = either error id $ parseOnly pField d
-  putStrLn $ showField f
+  putStrLn $ showField $ resize f
+  print $ nRowsWithoutElf f
