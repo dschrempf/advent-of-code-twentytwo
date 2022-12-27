@@ -38,10 +38,13 @@ import Data.Massiv.Array
     MArray,
     PrimMonad (..),
     Sz (..),
+    (!>),
   )
 import qualified Data.Massiv.Array as A
+import Data.Maybe (fromJust)
 
 data Blizzard = North | West | South | East
+  deriving (Show, Eq)
 
 toCharB :: Blizzard -> Char
 toCharB North = '^'
@@ -57,6 +60,7 @@ pBlizzard =
     <|> East <$ char '>'
 
 data Cell = BlizzardC (NonEmpty Blizzard) | Ground | Boundary
+  deriving (Show, Eq)
 
 toChar :: Cell -> Char
 toChar (BlizzardC xs)
@@ -127,10 +131,21 @@ blow blueprint xs = runST $ do
   A.imapM_ (blowC m) xs
   A.freezeS m
 
+getStart :: F2 -> Ix2
+getStart = fromJust . A.findIndex (== Ground)
+
+getEnd :: F2 -> Ix2
+getEnd xs = Ix2 r $ fromJust $ A.findIndex (== Ground) $ xs !> pred r
+  where
+    (Sz2 r c) = A.size xs
+
 main :: IO ()
 main = do
   d <- BS.readFile "inputs/input24-sample.txt"
   let xs = either error id $ parseOnly pField d
   putStr $ showField xs
+  let p0 = getStart xs
+      pe = getEnd xs
+  print (p0, pe)
   let bp = getBlueprint xs
   putStr $ showField $ blow bp xs
