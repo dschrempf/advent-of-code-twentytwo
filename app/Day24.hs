@@ -16,6 +16,7 @@ module Main
   )
 where
 
+import Aoc.Array (neighborsNoDiagonal)
 import Control.Applicative (Alternative (..), optional, (<|>))
 import Control.Monad.ST (runST)
 import Data.Attoparsec.ByteString.Char8
@@ -30,6 +31,7 @@ import qualified Data.ByteString.Char8 as BS
 import Data.Char (intToDigit)
 import Data.List.NonEmpty (NonEmpty, (<|))
 import qualified Data.List.NonEmpty as N
+import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
     B,
@@ -38,6 +40,7 @@ import Data.Massiv.Array
     MArray,
     PrimMonad (..),
     Sz (..),
+    (!),
     (!>),
   )
 import qualified Data.Massiv.Array as A
@@ -99,7 +102,7 @@ getBlueprint = fmap erase
 addB :: PrimMonad m => Blizzard -> Cell -> m Cell
 addB b Ground = pure $ BlizzardC $ N.singleton b
 addB b (BlizzardC xs) = pure $ BlizzardC $ b <| xs
-addB b Boundary = error "addB: blizzard was blown into boundary"
+addB _ Boundary = error "addB: blizzard was blown into boundary"
 
 blowB :: PrimMonad m => F2M m -> Ix2 -> Blizzard -> m ()
 blowB xs (Ix2 r c) b = A.modify_ xs (addB b) ix'
@@ -135,17 +138,46 @@ getStart :: F2 -> Ix2
 getStart = fromJust . A.findIndex (== Ground)
 
 getEnd :: F2 -> Ix2
-getEnd xs = Ix2 r $ fromJust $ A.findIndex (== Ground) $ xs !> pred r
+getEnd xs = Ix2 (pred r) $ fromJust $ A.findIndex (== Ground) $ xs !> pred r
   where
-    (Sz2 r c) = A.size xs
+    (Sz2 r _) = A.size xs
+
+type Path = [Ix2]
+
+move :: F2 -> Path -> [Path]
+move _ [] = error "move: empty path"
+move xs (y : ys) =
+  [ y' : y : ys
+    | y' <- y : neighborsNoDiagonal (A.size xs) y,
+      (xs ! y') == Ground
+  ]
+
+moveAll :: M.Map Ix2 Path -> F2 -> M.Map Ix2 Path
+moveAll xs f = M.fromList $ map prep xss'
+  where
+    xss' = concat $ M.elems $ M.map (move f) xs
+    prep [] = error "moveAll: prep: empty path"
+    prep (y : ys) = (y, y : ys)
+
+findPath :: Ix2 -> M.Map Ix2 Path -> F2 -> F2 -> (Path, F2)
+findPath end paths bp xs = case M.lookup end paths of
+  Nothing -> let xs' = blow bp xs in findPath end (moveAll paths xs') bp xs'
+  Just p -> (p, xs)
 
 main :: IO ()
-main = do
-  d <- BS.readFile "inputs/input24-sample.txt"
-  let xs = either error id $ parseOnly pField d
-  putStr $ showField xs
-  let p0 = getStart xs
-      pe = getEnd xs
-  print (p0, pe)
-  let bp = getBlueprint xs
-  putStr $ showField $ blow bp xs
+main =
+  do
+    d <- BS.readFile "inputs/input24.txt"
+    -- Part 1.
+    let xs = either error id $ parseOnly pField d
+        p0 = getStart xs
+        pe = getEnd xs
+        bp = getBlueprint xs
+        path0 = M.singleton p0 [p0]
+    putStr $ showField xs
+    let (there, xs') = findPath pe path0 bp xs
+    print $ pred $ length there
+    -- Part 2.
+    let (back, xs'') = findPath p0 (M.singleton pe [pe]) bp xs'
+        (there', _) = findPath pe (M.singleton p0 [p0]) bp xs''
+    print $ sum $ map (pred . length) [there, back, there']

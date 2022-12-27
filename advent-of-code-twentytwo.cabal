@@ -388,9 +388,11 @@ executable day24
   autogen-modules:
   ghc-options:
   build-depends:
+    , aoc
     , attoparsec
     , base        >=4.7 && <5
     , bytestring
+    , containers
     , massiv
 
 executable day25
