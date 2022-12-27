@@ -14,7 +14,7 @@
       theseHpkgNames = [
         "advent-of-code-twentytwo"
       ];
-      thisGhcVersion = "ghc90";
+      thisGhcVersion = "ghc92";
       hOverlay = selfn: supern: {
         haskell = supern.haskell // {
           packageOverrides = selfh: superh:
