@@ -19,11 +19,22 @@ module Main
 where
 
 import Control.Applicative
+  ( Alternative (some, (<|>)),
+    asum,
+    optional,
+  )
 import Control.Monad.ST (runST)
-import Data.Attoparsec.ByteString.Char8 hiding (take)
-import Data.Bifunctor
+import Data.Attoparsec.ByteString.Char8
+  ( Parser,
+    char,
+    endOfInput,
+    endOfLine,
+    parseOnly,
+    sepBy1',
+  )
+import Data.Bifunctor (Bifunctor (second))
 import qualified Data.ByteString.Char8 as BS
-import Data.Foldable
+import Data.Foldable (Foldable (foldl'))
 import qualified Data.Map.Strict as M
 import Data.Massiv.Array
   ( Array,
@@ -38,7 +49,7 @@ import Data.Massiv.Array
     (<!),
   )
 import qualified Data.Massiv.Array as A
-import Data.Maybe
+import Data.Maybe (fromJust, isJust)
 
 data Tile = Elf | Ground
   deriving (Show, Eq)
